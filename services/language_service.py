@@ -3,33 +3,32 @@ from azure.core.credentials import AzureKeyCredential
 from azure.ai.textanalytics import TextAnalyticsClient
 from dotenv import load_dotenv
 
-# Carrega .env uma segunda vez para garantir, caso o main.py não o tenha feito.
-load_dotenv() 
-
-# Credenciais lidas do .env
-AI_KEY = os.getenv("AI_KEY")
-AI_ENDPOINT = os.getenv("AI_ENDPOINT")
-
-# Variável global para armazenar o cliente, evitando recriá-lo a cada requisição
-# Inicializamos como None
+# Variável para armazenar o cliente, evitando recriá-lo a cada requisição
 ai_client = None
 
 def get_text_analytics_client():
     """
     Cria ou retorna o cliente autenticado do Azure AI Language Service.
-    A autenticação só ocorre na primeira vez que esta função é chamada.
+    A autenticação só ocorre na primeira vez que esta função é chamada (lazy loading).
     """
     global ai_client
     if ai_client is None:
+        load_dotenv()
+        
+        # Credenciais lidas do .env
+        AI_KEY = os.getenv("AI_KEY")
+        AI_ENDPOINT = os.getenv("AI_ENDPOINT")
+        
+        if not AI_KEY or not AI_ENDPOINT:
+            raise Exception("Chaves AI_KEY ou AI_ENDPOINT não encontradas no .env.")
+            
         try:
-            # A AUTENTICAÇÃO E CRIAÇÃO DO CLIENTE SÓ ACONTECE AQUI DENTRO DA FUNÇÃO
+            # A AUTENTICAÇÃO E CRIAÇÃO DO CLIENTE SÓ ACONTECE AQUI
             credential = AzureKeyCredential(AI_KEY)
             ai_client = TextAnalyticsClient(endpoint=AI_ENDPOINT, credential=credential)
-            print("Cliente Azure AI Language autenticado com sucesso.")
+            # NÃO COLOCAMOS PRINT DE SUCESSO AQUI PARA NÃO ATRAPALHAR O UVICORN
         except Exception as ex:
-            # Em vez de imprimir e continuar, levantamos o erro para o FastAPI
-            print(f"ERRO: Falha na autenticação do cliente Azure: {ex}")
-            raise Exception("Falha ao inicializar o cliente Azure AI Language.")
+            raise Exception(f"ERRO: Falha na autenticação do cliente Azure: {ex}")
     
     return ai_client
 
@@ -38,21 +37,17 @@ def analyze_sentiment(text: str):
     """
     Recebe um texto e envia para análise de sentimento.
     """
-    # 1. Obtém o cliente (autentica se ainda não foi feito)
     client = get_text_analytics_client()
 
-    # 2. Chama a API do Azure
     documents = [text]
     try:
         response = client.analyze_sentiment(documents=documents)[0]
     except Exception as e:
-        # Se a chamada à API falhar, retornamos um erro claro.
         return {
             "error": "Falha na chamada da API de Sentimento do Azure.",
             "details": str(e)
         }
 
-    # 3. Processa e retorna o resultado
     return {
         "sentimento_geral": response.sentiment.capitalize(),
         "pontuacoes_confianca": {
@@ -71,3 +66,22 @@ def analyze_sentiment(text: str):
             for sentence in response.sentences
         ]
     }
+
+def extract_key_phrases(text: str):
+    """
+    Recebe um texto e extrai as frases-chave para resumo.
+    """
+    client = get_text_analytics_client()
+
+    documents = [text]
+    try:
+        # A API de Frases-Chave é usada aqui
+        response = client.extract_key_phrases(documents=documents)[0]
+    except Exception as e:
+        return {
+            "error": "Falha na chamada da API de Extração de Frases-Chave do Azure.",
+            "details": str(e)
+        }
+    
+    # Retorna a lista de frases-chave
+    return {"frases_chave": response.key_phrases}
