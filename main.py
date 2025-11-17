@@ -8,50 +8,34 @@ from typing import Dict, Any, List
 # Importamos o router que deve conter a rota para os Estilos de Formatação
 from routes.routes import router 
 
-# Importação para o Gemini SDK
-from google import genai
-from google.genai import types
-from google.genai.errors import APIError
-
 # --- 1. CONFIGURAÇÃO INICIAL E VARIÁVEIS DE AMBIENTE ---
 load_dotenv()
 AI_KEY = os.getenv("AI_KEY")
 AI_ENDPOINT = os.getenv("AI_ENDPOINT")
-# NOVA: Variável para a chave do Gemini
-GEMINI_KEY = os.getenv("GEMINI_AI_KEY") 
 
 # Certifique-se de que as chaves estão presentes
 if not AI_KEY or not AI_ENDPOINT:
-    print("AVISO: Chaves 'AI_KEY' ou 'AI_ENDPOINT' não encontradas. O cliente Azure não será autenticado.")
-
-# NOVA: Verifica a chave do Gemini
-if not GEMINI_KEY:
-    print("AVISO: Chave 'GEMINI_AI_KEY' não encontrada no .env. O cliente Gemini não será inicializado.")
+    print("AVISO: Chaves 'AI_KEY' ou 'AI_ENDPOINT' não encontradas no .env. O cliente Azure não será autenticado.")
+    # Usaremos None, e o status/startup_event irá reportar o erro.
 
 # --- 2. INICIALIZAÇÃO DO APP E INCLUSÃO DE ROTAS ---
 app = FastAPI(
     title="Minha API de TCC - ACERTUS",
-    description="API para análise de feedback e processamento de texto utilizando Azure AI Language e Gemini.",
+    description="API para análise de feedback e processamento de texto utilizando Azure AI Language.",
     version="1.0.0"
 )
 
-# Inclui o roteador existente
+# Inclui o roteador (onde deve estar a rota de Estilos de Formatação)
 app.include_router(router) 
 
-# NOVA: Importa o roteador do Gemini
-from routes.gemini_routes import gemini_router
-app.include_router(gemini_router)
-
-
 ai_client = None
-gemini_client = None # NOVA: Variável global para o cliente Gemini
 
-# --- 3. EVENTO DE INICIALIZAÇÃO (SETUP DA AZURE AI E GEMINI) ---
+# --- 3. EVENTO DE INICIALIZAÇÃO (SETUP DA AZURE AI) ---
 @app.on_event("startup")
 def startup_event():
     """
     Função executada na inicialização do servidor.
-    Cria e autentica os clientes do Azure AI Language e do Gemini.
+    Cria e autentica o cliente do Azure AI Language.
     """
     global ai_client
     if AI_KEY and AI_ENDPOINT:
@@ -64,21 +48,9 @@ def startup_event():
             print(f"ERRO na autenticação do cliente Azure AI: {ex}")
     else:
         print("Cliente Azure AI não inicializado devido à falta de chaves.")
-    
-    # NOVA: Inicialização do cliente Gemini
-    global gemini_client
-    if GEMINI_KEY:
-        try:
-            # O cliente do Gemini é inicializado usando a chave que está na variável de ambiente
-            gemini_client = genai.Client(api_key=GEMINI_KEY)
-            print("Cliente Gemini API inicializado com sucesso.")
-        except Exception as ex:
-            print(f"ERRO na inicialização do cliente Gemini: {ex}")
-    else:
-        print("Cliente Gemini API não inicializado devido à falta de chaves.")
 
 
-# --- 4. FUNÇÕES PARA INJEÇÃO DE DEPENDÊNCIA ---
+# --- 4. FUNÇÃO PARA INJEÇÃO DE DEPENDÊNCIA ---
 def get_azure_client():
     """
     Função geradora usada pelo FastAPI Depends() para injetar
@@ -92,21 +64,6 @@ def get_azure_client():
         )
     yield ai_client
 
-# NOVA: Função de dependência para o Gemini
-def get_gemini_client():
-    """
-    Função geradora usada pelo FastAPI Depends() para injetar
-    o cliente autenticado do Gemini nas rotas.
-    """
-    global gemini_client
-    if not gemini_client:
-        raise HTTPException(
-            status_code=503, 
-            detail="Serviço Gemini API não está disponível ou não foi autenticado."
-        )
-    yield gemini_client
-
-
 # --- 5. ROTA DE SAUDAÇÃO E STATUS (CORRIGE O 404 NA RAIZ) ---
 
 @app.get("/", tags=["Status"])
@@ -119,17 +76,15 @@ def read_root():
 @app.get("/status", tags=["Status"])
 def api_status():
     """
-    Verifica o status da API, da conexão com o Azure AI e com o Gemini.
+    Verifica o status da API e da conexão com o Azure AI.
     """
     status = {
         "api_online": True,
-        "azure_ai_client_ready": ai_client is not None,
-        "gemini_client_ready": gemini_client is not None # NOVA: Status do Gemini
+        "azure_ai_client_ready": ai_client is not None
     }
     return status
 
 # --- 6. ROTA LOCAL DE FEEDBACKS ---
-# Mantida a rota de feedbacks para ser usada pela rota Gemini
 @app.get("/feedbacks", tags=["Feedbacks"], response_model=List[Dict[str, str]])
 def listar_feedbacks():
     """
@@ -156,5 +111,7 @@ def listar_feedbacks():
                 feedbacks.append({"Arquivo": arquivo, "Feedback": f"ERRO: Não foi possível ler o arquivo. {e}"})
 
     # Converte para DataFrame e depois para lista de dicionários
+    # Note: O uso de pandas para esta conversão simples não é ideal, 
+    # mas mantive a sua lógica. Para performance, seria melhor retornar a lista 'feedbacks' diretamente.
     df_feedbacks = pd.DataFrame(feedbacks)
     return df_feedbacks.to_dict(orient="records")
