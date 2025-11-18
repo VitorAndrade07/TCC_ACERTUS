@@ -5,6 +5,7 @@ from azure.core.credentials import AzureKeyCredential
 from azure.ai.textanalytics import TextAnalyticsClient
 from dotenv import load_dotenv
 from typing import Dict, Any, List
+import google.generativeai as genai
 # Importamos o router que deve conter a rota para os Estilos de Formatação
 from routes.routes import router 
 
@@ -12,11 +13,14 @@ from routes.routes import router
 load_dotenv()
 AI_KEY = os.getenv("AI_KEY")
 AI_ENDPOINT = os.getenv("AI_ENDPOINT")
+GEMINI_AI_KEY = os.getenv("GEMINI_AI_KEY")
 
 # Certifique-se de que as chaves estão presentes
 if not AI_KEY or not AI_ENDPOINT:
     print("AVISO: Chaves 'AI_KEY' ou 'AI_ENDPOINT' não encontradas no .env. O cliente Azure não será autenticado.")
     # Usaremos None, e o status/startup_event irá reportar o erro.
+
+ai_client = None 
 
 # --- 2. INICIALIZAÇÃO DO APP E INCLUSÃO DE ROTAS ---
 app = FastAPI(
@@ -49,6 +53,14 @@ def startup_event():
     else:
         print("Cliente Azure AI não inicializado devido à falta de chaves.")
 
+    if GEMINI_AI_KEY:
+        try: 
+            gemini_client = genai.configure(api_key=GEMINI_AI_KEY)
+            print("Cliente Gemini AI inicializado com sucesso.")
+        except Exception as ex:
+            print(f"ERRO na inicialização do cliente Gemini AI: {ex}")
+    else:
+        print("Cliente Gemini AI não inicializado devido à falta de chaves.")
 
 # --- 4. FUNÇÃO PARA INJEÇÃO DE DEPENDÊNCIA ---
 def get_azure_client():
@@ -63,6 +75,18 @@ def get_azure_client():
             detail="Serviço Azure AI Language não está disponível ou não foi autenticado."
         )
     yield ai_client
+
+def get_gemini_client():
+    """
+    Função geradora usada pelo FastAPI Depends() para injetar
+    o cliente autenticado do Gemini AI nas rotas.
+    """
+    if not gemini_client:
+        raise HTTPException(
+            status_code=503,
+            detail="Serviço Gemini AI não está disponível ou não foi autenticado."
+        )
+    yield gemini_client
 
 # --- 5. ROTA DE SAUDAÇÃO E STATUS (CORRIGE O 404 NA RAIZ) ---
 
