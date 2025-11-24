@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Resultados: {{ form.title }} | ACertus{% endblock %}
+
+{% block content %}
+    <div class="results-header">
+        <h1>Resultados: {{ form.title }}</h1>
+        <p>{{ form.description }}</p>
+        <div class="results-stats">
+            <span class="stat-box">Total de Respostas: <strong>{{ total_responses }}</strong></span>
+            <span class="stat-box">Link: <a href="{{ url_for('view_form', form_id=form.id) }}" target="_blank">Abrir Formulário</a></span>
+        </div>
+    </div>
+    
+    <div class="results-list">
+        {% for result in results_data %}
+            <div class="result-card">
+                <h2>{{ loop.index }}. {{ result.question_text }}</h2>
+                <small>Tipo: {{ result.type | replace('_', ' ') | title }}</small>
+                
+                {% if result.type == 'text' %}
+                    <div class="open-answers">
+                        {% if result.answers %}
+                            <p>Últimas {{ result.answers|length }} Respostas de Texto:</p>
+                            <ul>
+                                {% for answer in result.answers %}
+                                    <li>"{{ answer.answer_text }}"</li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <p>Nenhuma resposta de texto ainda.</p>
+                        {% endif %}
+                    </div>
+                    
+                {% elif result.type in ['multiple_choice', 'checkbox'] %}
+                    <div class="chart-area">
+                        <div class="chart-placeholder">
+                            Estatísticas de Votos (Gráfico Placeholder)
+                        </div>
+
+                        <div class="vote-summary">
+                            {% for stat in result.stats %}
+                                {% set percentage = (stat.vote_count / total_responses) * 100 if total_responses and stat.vote_count else 0 %}
+                                <div class="vote-row">
+                                    <span class="option-label">{{ stat.option_text }}:</span>
+                                    <span class="vote-count-bar" style="width: {{ percentage }}%">
+                                        {{ stat.vote_count }} votos ({{ "%.1f" % percentage }}%)
+                                    </span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+
+    <p style="text-align: center; margin-top: 30px;"><a href="{{ url_for('dashboard') }}" class="btn-create" style="background: #333;">Voltar ao Dashboard</a></p>
+{% endblock %}

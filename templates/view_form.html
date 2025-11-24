@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ form.title }} | ACertus Survey</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/form_view.css') }}">
+</head>
+<body>
+<div class="form-container">
+    <div class="form-header">
+        <h1>{{ form.title }}</h1>
+        <p>{{ form.description }}</p>
+    </div>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('submit_form', form_id=form.id) }}">
+        {% for q in questions %}
+            <div class="question-block">
+                <label class="question-label">{{ loop.index }}. {{ q.question_text }} {% if q.is_required %}<span>*</span>{% endif %}</label>
+                
+                {% if q.question_type == 'text' %}
+                    <textarea name="q_{{ q.id }}_text" rows="4" placeholder="Sua resposta..." {% if q.is_required %}required{% endif %}></textarea>
+
+                {% elif q.question_type == 'multiple_choice' %}
+                    {% for opt in q.options %}
+                        <div class="option-item">
+                            <input type="radio" id="opt_{{ opt.id }}" name="q_{{ q.id }}_choice" value="{{ opt.id }}" {% if q.is_required %}required{% endif %}>
+                            <label for="opt_{{ opt.id }}">{{ opt.option_text }}</label>
+                        </div>
+                    {% endfor %}
+
+                {% elif q.question_type == 'checkbox' %}
+                    {% for opt in q.options %}
+                        <div class="option-item">
+                            <input type="checkbox" id="opt_{{ opt.id }}" name="q_{{ q.id }}_checkbox" value="{{ opt.id }}">
+                            <label for="opt_{{ opt.id }}">{{ opt.option_text }}</label>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+        {% endfor %}
+
+        <button type="submit" class="btn-submit-survey">Enviar Resposta</button>
+    </form>
+    
+    <div class="powered-by">
+        Desenvolvido por ACertus
+    </div>
+</div>
+</body>
+</html>

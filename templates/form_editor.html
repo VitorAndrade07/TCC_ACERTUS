@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Editor de Formulário: {{ form.title }} | ACertus{% endblock %}
+
+{% block content %}
+    <div class="editor-header">
+        <h1>Editor de Formulário: {{ form.title }}</h1>
+        <p>{{ form.description }}</p>
+        <div class="editor-actions">
+            <a href="{{ url_for('view_form', form_id=form.id) }}" target="_blank" class="btn btn-share">Pré-visualizar</a>
+            <a href="{{ url_for('form_results', form_id=form.id) }}" class="btn btn-results">Resultados</a>
+        </div>
+    </div>
+
+    <div class="question-tools">
+        <span>Adicionar Pergunta:</span>
+        <button 
+            class="btn-tool" 
+            hx-post="{{ url_for('add_question', form_id=form.id) }}" 
+            hx-vals='{"type": "text"}'
+            hx-target="#question-list"
+            hx-swap="beforeend">
+            Texto Aberto
+        </button>
+        <button 
+            class="btn-tool"
+            hx-post="{{ url_for('add_question', form_id=form.id) }}" 
+            hx-vals='{"type": "multiple_choice"}'
+            hx-target="#question-list"
+            hx-swap="beforeend">
+            Múltipla Escolha
+        </button>
+        <button 
+            class="btn-tool"
+            hx-post="{{ url_for('add_question', form_id=form.id) }}" 
+            hx-vals='{"type": "checkbox"}'
+            hx-target="#question-list"
+            hx-swap="beforeend">
+            Checkbox
+        </button>
+    </div>
+
+    <div id="question-list" class="question-list">
+        {% for q in questions %}
+            {% include "question_partial.html" %}
+        {% endfor %}
+    </div>
+
+    <p style="text-align: center; margin-top: 30px;"><a href="{{ url_for('dashboard') }}" class="btn-create" style="background: #333;">Finalizar Edição e Voltar</a></p>
+
+    <script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('optionManager', (initialOptions, initialRequired) => ({
+            // Mapeia o formato do Python para o formato Alpine
+            options: initialOptions.map(opt => ({ id: opt.id || Date.now(), text: opt.option_text })),
+            isRequired: initialRequired,
+
+            addOption() {
+                this.options.push({id: Date.now(), text: 'Nova Opção'});
+            },
+            removeOption(index) {
+                this.options.splice(index, 1);
+            },
+            
+            // Retorna a string JSON das opções no formato que o Flask espera
+            get optionsJson() {
+                return JSON.stringify(this.options.map(opt => ({ text: opt.text })));
+            }
+        }));
+    });
+</script>
+{% endblock %}

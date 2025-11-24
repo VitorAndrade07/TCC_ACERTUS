@@ -1,0 +1,95 @@
+<div class="question-card" x-data="optionManager({{ json_dump(q.options) }}, {{ q.is_required | default(0) }})" x-init="questionText = '{{ q.question_text | e }}'; isRequired = {{ q.is_required | default(0) }}">
+    <div class="question-header">
+        <span class="question-type-badge">{{ q.question_type | replace('_', ' ') | title }}</span>
+        
+        <input 
+            type="text" 
+            name="questionText" 
+            placeholder="Digite o texto da pergunta aqui..." 
+            class="question-text-input"
+            x-model="questionText"
+            >
+
+        <div class="question-actions">
+             <label class="required-toggle">
+                Obrigatória:
+                <input 
+                    type="checkbox" 
+                    name="is_required_html_placeholder" 
+                    :checked="isRequired" 
+                    x-model="isRequired"
+                >
+            </label>
+
+            <button 
+                class="btn-delete"
+                hx-delete="{{ url_for('delete_question', question_id=q.id) }}"
+                hx-confirm="Tem certeza que deseja deletar esta pergunta? Todas as respostas serão perdidas."
+                hx-swap="outerHTML"
+                hx-target="closest .question-card"
+                >
+                Deletar
+            </button>
+            
+            <button 
+                class="btn-save"
+                hx-post="{{ url_for('update_question', question_id=q.id) }}"
+                hx-target="#save-status-{{ q.id }}"
+                hx-indicator="#loading-{{ q.id }}"
+                hx-swap="innerHTML"
+                hx-trigger="click, blur delay:500ms from:input, change from:input[type='checkbox']"
+                hx-include="closest .question-card"
+                >
+                Salvar
+            </button>
+            <span id="loading-{{ q.id }}" class="htmx-indicator">Salvando...</span>
+            <span id="save-status-{{ q.id }}" class="save-status"></span>
+        </div>
+    </div>
+    
+    <input type="hidden" name="isRequired" :value="isRequired ? 'true' : 'false'">
+
+    {% if q.question_type == 'text' %}
+        <p class="question-text-info">Resposta de texto livre (campo de entrada longo).</p>
+    {% else %}
+        <div class="options-list">
+            <h4>Opções:</h4>
+            <input type="hidden" name="options_data" :value="optionsJson">
+
+            <template x-for="(option, index) in options" :key="option.id">
+                <div class="option-row">
+                    <span :class="{'option-icon': true, 'radio': q.question_type == 'multiple_choice', 'checkbox': q.question_type == 'checkbox'}"></span>
+                    <input type="text" placeholder="Texto da Opção" class="option-text-input" x-model="options[index].text">
+                    <button type="button" class="btn-remove-option" @click="removeOption(index)">
+                        &times;
+                    </button>
+                </div>
+            </template>
+            
+            <button type="button" class="btn-add-option" @click="addOption">
+                + Adicionar Opção
+            </button>
+        </div>
+    {% endif %}
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+             Alpine.data('optionManager', (initialOptions, initialRequired) => ({
+                questionText: '', 
+                options: initialOptions.map(opt => ({ id: opt.id || Date.now(), text: opt.option_text })),
+                isRequired: initialRequired,
+
+                addOption() {
+                    this.options.push({id: Date.now(), text: 'Nova Opção'});
+                },
+                removeOption(index) {
+                    this.options.splice(index, 1);
+                },
+                
+                get optionsJson() {
+                    return JSON.stringify(this.options.map(opt => ({ text: opt.text })));
+                }
+            }));
+        });
+    </script>
+</div>

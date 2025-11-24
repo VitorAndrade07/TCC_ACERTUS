@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}ACertus - Plataforma de Satisfação{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <script src="https://unpkg.com/htmx.org@1.9.10" defer></script>
+    <script src="https://unpkg.com/alpinejs@3.13.5" defer></script>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>ACertus</h2>
+        <a href="{{ url_for('dashboard') }}" class="{% if request.path == url_for('dashboard') %}active{% endif %}">
+            Dashboard
+        </a>
+        <a href="{{ url_for('create_form') }}" class="{% if 'create' in request.path %}active{% endif %}">
+            Criar Novo Form
+        </a>
+        <a href="{{ url_for('logout') }}" class="logout-link">
+            Sair
+        </a>
+    </div>
+
+    <div class="main">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+</body>
+</html>

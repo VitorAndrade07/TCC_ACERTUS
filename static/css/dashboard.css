@@ -1,0 +1,313 @@
+/* Reset básico */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+ 
+body {
+    display: flex;
+    height: 100vh;
+    background-color: #f4f7f6;
+}
+ 
+/* Flash Messages */
+.flash {
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    color: #fff;
+    text-align: center;
+    font-weight: bold;
+}
+.flash-success { background-color: #5cb85c; }
+.flash-danger { background-color: #d9534f; }
+.flash-warning { background-color: #f0ad4e; }
+.flash-info { background-color: #5bc0de; }
+ 
+ 
+/* Sidebar - Navegação Lateral */
+.sidebar {
+    width: 250px;
+    background: #ffffff;
+    padding: 20px;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
+}
+ 
+.sidebar h2 {
+    color: #6a0dad;
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 28px;
+    border-bottom: 3px solid #6a0dad;
+    padding-bottom: 10px;
+}
+ 
+.sidebar a {
+    text-decoration: none;
+    color: #555;
+    padding: 15px 15px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    transition: background-color 0.3s, color 0.3s;
+    display: block;
+}
+ 
+.sidebar a:hover, .sidebar a.active {
+    background-color: #6a0dad;
+    color: #ffffff;
+}
+ 
+.logout-link {
+    margin-top: auto;
+    color: #d9534f !important;
+}
+ 
+.logout-link:hover {
+    background-color: #d9534f !important;
+    color: #fff !important;
+}
+ 
+/* Conteúdo Principal */
+.main {
+    flex-grow: 1;
+    padding: 40px;
+    overflow-y: auto;
+}
+ 
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e0e0e0;
+}
+ 
+.header h1 {
+    color: #333;
+    font-size: 36px;
+}
+ 
+/* Botão Principal */
+.btn-create {
+    background-color: #6a0dad;
+    color: #fff;
+    padding: 12px 25px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 16px;
+    box-shadow: 0 4px 6px rgba(106, 13, 173, 0.3);
+    transition: background-color 0.3s, transform 0.2s;
+    border: none;
+}
+ 
+.btn-create:hover {
+    background-color: #5800b0;
+    transform: translateY(-2px);
+}
+ 
+.main h2 {
+    color: #444;
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+ 
+/* Lista de Formulários (Cards) */
+.form-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 25px;
+}
+ 
+.form-card {
+    background: #fff;
+    padding: 25px;
+    border-radius: 15px;
+    border-left: 5px solid #6a0dad;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+    transition: transform 0.3s;
+    display: flex;
+    flex-direction: column;
+}
+ 
+.form-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+ 
+.answered-card { border-left-color: #5bc0de !important; }
+ 
+.form-card h3 {
+    color: #333;
+    margin-bottom: 10px;
+}
+ 
+.form-card p {
+    color: #777;
+    font-size: 14px;
+    margin-bottom: 20px;
+    flex-grow: 1;
+}
+ 
+.form-card small {
+    color: #aaa;
+    font-size: 12px;
+    margin-top: 10px;
+}
+ 
+.form-card-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: auto;
+}
+ 
+.btn, .btn-info {
+    text-decoration: none;
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: bold;
+    text-align: center;
+    transition: opacity 0.3s;
+    border: none;
+}
+ 
+.btn:hover, .btn-info:hover {
+    opacity: 0.85;
+}
+ 
+.btn-edit { background-color: #6a0dad; color: #fff; }
+.btn-results { background-color: #5bc0de; color: #fff; }
+.btn-share { background-color: #5cb85c; color: #fff; }
+.btn-info { background-color: #aaa; color: #fff; }
+ 
+ 
+/* --- Estilos do Editor de Formulário (form_editor.html) --- */
+.editor-header { margin-bottom: 30px; border-bottom: 1px solid #ddd; padding-bottom: 20px; }
+.editor-header h1 { font-size: 28px; color: #6a0dad; }
+.editor-actions { margin-top: 15px; display: flex; gap: 10px; }
+ 
+.question-tools {
+    padding: 15px;
+    background: #eef;
+    border-radius: 8px;
+    margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.btn-tool {
+    padding: 8px 15px;
+    background: #6a0dad;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+}
+.btn-tool:hover { background: #5800b0; }
+ 
+.question-card {
+    background: #fff;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    margin-bottom: 15px;
+    border-left: 5px solid #f0ad4e;
+}
+ 
+/* Modo Display */
+.question-display-content h4 { margin-bottom: 5px; color: #333; }
+.question-display-content small { display: block; color: #888; font-style: italic; margin-bottom: 10px; }
+.question-display-content ul { padding-left: 20px; }
+.question-actions-display { margin-top: 10px; display: flex; gap: 10px; }
+.btn-edit-small, .btn-delete-small { padding: 5px 10px; font-size: 12px; border-radius: 5px; cursor: pointer; border: none;}
+.btn-edit-small { background: #5bc0de; color: white; }
+.btn-delete-small { background: #d9534f; color: white; }
+ 
+/* Modo Edição */
+.question-input-editor {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+.options-container { margin-top: 10px; padding: 10px; background: #f9f9f9; border-radius: 8px; }
+.options-container label { font-weight: bold; display: block; margin-bottom: 5px; }
+.option-row { display: flex; gap: 5px; align-items: center; margin-bottom: 5px; }
+.option-input-editor { flex-grow: 1; padding: 8px; border: 1px solid #eee; border-radius: 4px; }
+.btn-remove-option { background: #d9534f; color: white; border: none; padding: 5px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+.btn-add-option { background: #5cb85c; color: white; border: none; padding: 8px 15px; border-radius: 6px; margin-top: 10px; cursor: pointer; }
+.editor-controls { margin-top: 15px; display: flex; gap: 10px; }
+.btn-save { background: #6a0dad; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+.btn-cancel { background: #aaa; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; }
+.required-toggle { margin-top: 10px; display: flex; align-items: center; }
+.required-toggle input { margin-right: 5px; }
+ 
+ 
+/* --- Estilos de Resultados (form_results.html) --- */
+.results-header { margin-bottom: 30px; border-bottom: 2px solid #6a0dad; padding-bottom: 20px; }
+.results-header h1 { font-size: 32px; color: #333; }
+.results-stats { display: flex; gap: 20px; margin-top: 10px; }
+.stat-box { background: #eee; padding: 8px 15px; border-radius: 6px; font-size: 14px; }
+ 
+.result-card {
+    background: #fff;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    margin-bottom: 25px;
+}
+.result-card h2 { font-size: 20px; margin-bottom: 5px; color: #444; }
+.result-card small { display: block; margin-bottom: 15px; color: #888; }
+ 
+.open-answers ul { list-style: none; padding: 10px; background: #f9f9f9; border-radius: 6px; }
+.open-answers li { border-bottom: 1px dashed #eee; padding: 8px 0; font-size: 14px; }
+.open-answers li:last-child { border-bottom: none; }
+ 
+.chart-placeholder {
+    height: 150px;
+    background: #f0f0ff;
+    border: 1px dashed #6a0dad;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #6a0dad;
+    margin-bottom: 20px;
+    border-radius: 8px;
+}
+ 
+.vote-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    gap: 10px;
+}
+.option-label {
+    width: 30%;
+    font-weight: bold;
+    color: #333;
+    flex-shrink: 0;
+}
+.vote-count-bar {
+    background-color: #6a0dad;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    min-width: 50px;
+    text-align: right;
+    transition: width 0.5s;
+    overflow: hidden;
+}
+ 
+ 

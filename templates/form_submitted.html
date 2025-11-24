@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Resposta Enviada | ACertus</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/form_view.css') }}">
+    <style>
+        .confirmation-box {
+            background-color: #e6ffe6;
+            border: 1px solid #5cb85c;
+            color: #3c763d;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin-top: 50px;
+        }
+        .confirmation-box h1 {
+            color: #5cb85c;
+            font-size: 32px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+<div class="form-container">
+    <div class="confirmation-box">
+        <h1>🎉 Resposta Enviada!</h1>
+        <p>Agradecemos a sua participação na pesquisa **{{ form.title }}**.</p>
+        <p style="margin-top: 20px;">
+            <a href="/" style="color: #6a0dad; font-weight: bold; text-decoration: none;">Voltar para a página inicial</a>
+        </p>
+    </div>
+</div>
+</body>
+</html>

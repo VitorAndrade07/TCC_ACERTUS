@@ -1,0 +1,129 @@
+/* Estilo profissional para a página de submissão do formulário */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+ 
+body {
+    background-color: #f4f7f6;
+    display: flex;
+    justify-content: center;
+    padding: 40px 20px;
+    min-height: 100vh;
+}
+ 
+.form-container {
+    background: #ffffff;
+    padding: 40px;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 700px;
+}
+ 
+.form-header {
+    border-bottom: 3px solid #6a0dad;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+ 
+.form-header h1 {
+    color: #6a0dad;
+    font-size: 36px;
+}
+ 
+.form-header p {
+    color: #777;
+    margin-top: 10px;
+    font-size: 16px;
+}
+ 
+.flash {
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    color: #fff;
+    text-align: center;
+    font-weight: bold;
+}
+.flash-success { background-color: #5cb85c; }
+.flash-danger { background-color: #d9534f; }
+ 
+.question-block {
+    background: #f9f9f9;
+    padding: 25px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    border-left: 5px solid #a678f0;
+}
+ 
+.question-label {
+    display: block;
+    font-size: 18px;
+    color: #333;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+ 
+.question-label span {
+    color: #d9534f;
+    margin-left: 5px;
+}
+ 
+textarea, input[type="text"] {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 16px;
+    resize: vertical;
+}
+ 
+.option-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+ 
+.option-item input[type="radio"],
+.option-item input[type="checkbox"] {
+    margin-right: 10px;
+    width: 20px;
+    height: 20px;
+}
+ 
+.option-item label {
+    font-weight: normal;
+    font-size: 16px;
+    color: #555;
+    cursor: pointer;
+    flex-grow: 1;
+}
+ 
+.btn-submit-survey {
+    width: 100%;
+    padding: 15px;
+    background-color: #6a0dad;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 18px;
+    cursor: pointer;
+    margin-top: 30px;
+    transition: background-color 0.3s;
+    font-weight: bold;
+}
+ 
+.btn-submit-survey:hover {
+    background-color: #5800b0;
+}
+ 
+.powered-by {
+    text-align: center;
+    margin-top: 40px;
+    font-size: 12px;
+    color: #aaa;
+}
+ 
