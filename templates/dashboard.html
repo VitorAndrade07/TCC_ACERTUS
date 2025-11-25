@@ -1,26 +1,36 @@
 {% extends "base.html" %}
-
+ 
 {% block title %}Dashboard | ACertus{% endblock %}
-
+ 
 {% block content %}
     <div class="header">
         <h1>Bem-vindo, {{ user_name }}</h1>
         <a href="{{ url_for('create_form') }}" class="btn-create">Criar Novo Formulário +</a>
     </div>
-
+ 
     <h2>Meus Formulários Criados</h2>
-    
+   
     <div class="form-list">
         {% if forms_created %}
             {% for form in forms_created %}
-                <div class="form-card">
+                <div class="form-card" id="form-{{ form.id }}">
                     <h3>{{ form.title }}</h3>
                     <p>{{ form.description or 'Sem descrição' }}</p>
                     <div class="form-card-actions">
                         <a href="{{ url_for('edit_form', form_id=form.id) }}" class="btn btn-edit">Editar Perguntas</a>
                         <a href="{{ url_for('form_results', form_id=form.id) }}" class="btn btn-results">Ver Respostas</a>
                         <a href="{{ url_for('view_form', form_id=form.id) }}" target="_blank" class="btn btn-share">Compartilhar Link</a>
-                    </div>
+                       
+                        <button
+                            class="btn btn-delete-card"
+                            hx-delete="{{ url_for('delete_form', form_id=form.id) }}"
+                            hx-confirm="Tem certeza que deseja deletar o formulário '{{ form.title }}'? Esta ação é irreversível."
+                            hx-target="#form-{{ form.id }}"
+                            hx-swap="delete"
+                                >
+                            Deletar
+                        </button>
+                        </div>
                     <small>Criado em: {{ form.created_at.strftime('%d/%m/%Y') }}</small>
                 </div>
             {% endfor %}
@@ -28,7 +38,7 @@
             <p class="no-forms-message">Você ainda não criou nenhum formulário. <a href="{{ url_for('create_form') }}">Comece agora!</a></p>
         {% endif %}
     </div>
-
+ 
     <h2 style="margin-top: 50px;">Formulários que Respondi</h2>
     <div class="form-list">
         {% if forms_answered %}

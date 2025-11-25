@@ -1,23 +1,25 @@
 {% extends "base.html" %}
-
+ 
 {% block title %}Criar Formulário | ACertus{% endblock %}
-
+ 
 {% block content %}
     <div class="header">
         <h1>Criar Novo Formulário</h1>
     </div>
-
-    <div class="container" style="max-width: 600px; padding: 0; box-shadow: none;">
-        <form method="POST" style="text-align: left;">
-            <label style="font-weight: bold; display: block; margin-top: 15px;">Título do Formulário</label>
-            <input type="text" name="title" placeholder="Ex: Pesquisa de Satisfação Interna" required style="width: 100%;"><br>
-            
-            <label style="font-weight: bold; display: block; margin-top: 15px;">Descrição</label>
-            <textarea name="description" placeholder="Opcional: Descreva o objetivo da pesquisa..." style="width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; font-family: 'Segoe UI', sans-serif; min-height: 100px;"></textarea><br>
-            
-            <button type="submit">Salvar e Adicionar Perguntas</button>
-            
-            <p style="text-align: center;"><a href="{{ url_for('dashboard') }}">Cancelar</a></p>
+ 
+    <div class="form-creation-container">
+        <form method="POST">
+            <label for="title">Título do Formulário</label>
+            <input type="text" id="title" name="title" placeholder="Ex: Pesquisa de Satisfação Interna" required>
+           
+            <label for="description">Descrição</label>
+            <textarea id="description" name="description" placeholder="Opcional: Descreva o objetivo da pesquisa..."></textarea>
+           
+            <button type="submit" class="btn-create">Salvar e Adicionar Perguntas</button>
+           
+            <p style="text-align: center; margin-top: 20px;">
+                <a href="{{ url_for('dashboard') }}" class="btn-link">Cancelar</a>
+            </p>
         </form>
     </div>
 {% endblock %}

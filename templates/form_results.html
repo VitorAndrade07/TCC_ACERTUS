@@ -2,58 +2,353 @@
 
 {% block title %}Resultados: {{ form.title }} | ACertus{% endblock %}
 
+{% block extra_head_scripts %} {# Ou adicione esses estilos ao seu static/css/dashboard.css #}
+    <style>
+        /* Estilos para a seção de resultados */
+        .results-header { 
+            border-bottom: 1px solid #eee; 
+            padding-bottom: 15px; 
+            margin-bottom: 20px; 
+            background-color: #fff; /* Fundo branco para o cabeçalho */
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .results-header h1 { 
+            margin: 0; 
+            color: #6a1b9a; 
+            font-size: 2em;
+        }
+        .results-stats { 
+            margin-top: 15px; 
+            display: flex; 
+            gap: 20px; 
+            flex-wrap: wrap; /* Permite quebrar linha em telas menores */
+        }
+        .stat-box { 
+            background-color: #e9ecef; /* Cor mais neutra */
+            padding: 10px 18px; 
+            border-radius: 6px; 
+            font-size: 0.95em;
+            color: #495057;
+            display: flex;
+            align-items: center;
+        }
+        .stat-box strong {
+            margin-left: 8px;
+            color: #343a40;
+            font-size: 1.1em;
+        }
+        .stat-box a {
+            color: #007bff;
+            text-decoration: none;
+            margin-left: 5px;
+        }
+        .stat-box a:hover {
+            text-decoration: underline;
+        }
+
+        /* Contêiner das análises */
+        .results-list {
+            margin-top: 20px;
+        }
+        .question-card { 
+            background-color: #ffffff; /* Fundo branco para os cards */
+            border: 1px solid #e0e0e0; 
+            border-radius: 8px; 
+            padding: 25px; 
+            margin-bottom: 20px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+        }
+        .question-card h3 { 
+            color: #6a1b9a; 
+            margin-top: 0; 
+            margin-bottom: 10px;
+            font-size: 1.5em;
+        }
+        .question-card small {
+            display: block;
+            color: #888;
+            margin-bottom: 15px;
+            font-style: italic;
+        }
+
+        /* Estilos para a barra de sentimento */
+        .sentiment-bar-container { 
+            display: flex; 
+            width: 100%; 
+            height: 25px; /* Um pouco mais alta */
+            border-radius: 5px; 
+            overflow: hidden; 
+            margin-top: 15px; 
+            margin-bottom: 8px; 
+            border: 1px solid #ddd; /* Borda sutil */
+        }
+        .sentiment-bar-positive { background-color: #4CAF50; } /* Verde */
+        .sentiment-bar-neutral { background-color: #FFC107; } /* Amarelo */
+        .sentiment-bar-negative { background-color: #F44336; } /* Vermelho */
+        .sentiment-bar-positive, .sentiment-bar-neutral, .sentiment-bar-negative {
+            transition: width 0.8s ease-out; /* Transição suave para a largura */
+        }
+        .sentiment-labels { 
+            display: flex; 
+            justify-content: space-between; 
+            font-size: 0.95em; 
+            color: #555; 
+            margin-bottom: 15px; 
+            padding: 0 2px; /* Pequeno padding para alinhar com as barras */
+        }
+        .sentiment-label-positive { color: #4CAF50; font-weight: bold; }
+        .sentiment-label-neutral { color: #FFC107; font-weight: bold; }
+        .sentiment-label-negative { color: #F44336; font-weight: bold; }
+
+        /* Estilos para o resumo Gemini */
+        .summary-box { 
+            background-color: #e3f2fd; 
+            border-left: 5px solid #2196f3; 
+            padding: 18px; 
+            border-radius: 5px; 
+            margin-top: 20px; 
+        }
+        .summary-box h4 { 
+            margin-top: 0; 
+            color: #1976d2; 
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+        .summary-box p {
+            line-height: 1.6;
+            color: #333;
+            margin-bottom: 0;
+        }
+
+        /* Estilos para gráficos */
+        .chart-container { 
+            position: relative; 
+            height: 320px; /* Um pouco mais alto */
+            width: 100%; 
+            margin-top: 20px; 
+            padding: 10px; /* Padding interno para o gráfico */
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        /* Estilos para respostas brutas */
+        .raw-responses-container { 
+            background-color: #f8f9fa; /* Fundo mais claro */
+            border: 1px solid #ced4da; 
+            padding: 15px; 
+            margin-top: 15px; 
+            max-height: 250px; /* Um pouco mais alto */
+            overflow-y: auto; 
+            display: none; 
+            border-radius: 5px;
+        }
+        .raw-responses-container p { 
+            margin: 8px 0; 
+            border-bottom: 1px dashed #e9ecef; 
+            padding-bottom: 8px; 
+            font-style: italic;
+            color: #555;
+        }
+        .raw-responses-container p:last-child { border-bottom: none; padding-bottom: 0; }
+
+        /* Botões */
+        .btn-action { 
+            padding: 10px 20px; /* Botões maiores */
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            background-color: #6a1b9a; 
+            color: white; 
+            text-decoration: none; 
+            display: inline-block; 
+            margin-top: 20px; /* Mais espaço */
+            margin-right: 10px; 
+            font-size: 1em;
+            transition: background-color 0.3s ease;
+        }
+        .btn-action:hover { background-color: #4a148c; }
+        .btn-secondary { background-color: #6c757d; }
+        .btn-secondary:hover { background-color: #5a6268; }
+        .back-to-dashboard { 
+            text-align: center; 
+            margin-top: 40px; 
+            padding-bottom: 20px; /* Adiciona um pouco de espaço na parte inferior */
+        }
+        .back-to-dashboard .btn-action {
+            background: #343a40; /* Cor escura para o botão de voltar */
+        }
+        .back-to-dashboard .btn-action:hover {
+            background: #23272b;
+        }
+    </style>
+{% endblock %}
+
 {% block content %}
     <div class="results-header">
         <h1>Resultados: {{ form.title }}</h1>
         <p>{{ form.description }}</p>
         <div class="results-stats">
-            <span class="stat-box">Total de Respostas: <strong>{{ total_responses }}</strong></span>
+            <span class="stat-box">Total de Respostas: <strong id="total-responses">Carregando...</strong></span>
             <span class="stat-box">Link: <a href="{{ url_for('view_form', form_id=form.id) }}" target="_blank">Abrir Formulário</a></span>
         </div>
     </div>
     
-    <div class="results-list">
-        {% for result in results_data %}
-            <div class="result-card">
-                <h2>{{ loop.index }}. {{ result.question_text }}</h2>
-                <small>Tipo: {{ result.type | replace('_', ' ') | title }}</small>
-                
-                {% if result.type == 'text' %}
-                    <div class="open-answers">
-                        {% if result.answers %}
-                            <p>Últimas {{ result.answers|length }} Respostas de Texto:</p>
-                            <ul>
-                                {% for answer in result.answers %}
-                                    <li>"{{ answer.answer_text }}"</li>
-                                {% endfor %}
-                            </ul>
-                        {% else %}
-                            <p>Nenhuma resposta de texto ainda.</p>
-                        {% endif %}
-                    </div>
-                    
-                {% elif result.type in ['multiple_choice', 'checkbox'] %}
-                    <div class="chart-area">
-                        <div class="chart-placeholder">
-                            Estatísticas de Votos (Gráfico Placeholder)
-                        </div>
-
-                        <div class="vote-summary">
-                            {% for stat in result.stats %}
-                                {% set percentage = (stat.vote_count / total_responses) * 100 if total_responses and stat.vote_count else 0 %}
-                                <div class="vote-row">
-                                    <span class="option-label">{{ stat.option_text }}:</span>
-                                    <span class="vote-count-bar" style="width: {{ percentage }}%">
-                                        {{ stat.vote_count }} votos ({{ "%.1f" % percentage }}%)
-                                    </span>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                {% endif %}
-            </div>
-        {% endfor %}
+    <div id="questions-analysis-container" class="results-list">
+        <p>Carregando análises...</p>
     </div>
 
-    <p style="text-align: center; margin-top: 30px;"><a href="{{ url_for('dashboard') }}" class="btn-create" style="background: #333;">Voltar ao Dashboard</a></p>
+    <div class="back-to-dashboard">
+        <a href="{{ url_for('dashboard') }}" class="btn-action">Voltar ao Dashboard</a>
+    </div>
+{% endblock %}
+
+{% block extra_body_scripts %} {# O JavaScript vai aqui #}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const formId = {{ form.id }}; // Passa o ID do formulário do Flask para o JS
+            const analysisContainer = document.getElementById('questions-analysis-container');
+            const totalResponsesSpan = document.getElementById('total-responses');
+
+            async function fetchAndRenderAnalysis() {
+                try {
+                    // Faz a requisição para a sua nova rota API no Flask
+                    const response = await fetch(`/api/form/${formId}/analysis`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const data = await response.json();
+                    
+                    // Atualiza o total de respostas
+                    totalResponsesSpan.textContent = data.total_responses || '0'; 
+
+                    analysisContainer.innerHTML = ''; // Limpa o "Carregando análises..."
+
+                    if (data.questions_analysis && data.questions_analysis.length > 0) {
+                        data.questions_analysis.forEach((q, index) => { // Adicione 'index' para numerar as perguntas
+                            const card = document.createElement('div');
+                            card.className = 'result-card question-card'; 
+                            // Numerando as perguntas para melhor visualização
+                            card.innerHTML = `<h3>${index + 1}. ${q.question_title}</h3>`; 
+                            card.innerHTML += `<small>Tipo: ${q.question_type.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase())}</small>`;
+
+
+                            if (q.question_type === 'text') {
+                                // Cenário 1: Texto Aberto (Resumo Gemini + Sentimento)
+                                const sentiment = q.analysis_data.sentiment;
+                                const summaryText = q.analysis_data.summary_text;
+                                const rawResponses = q.analysis_data.raw_responses || [];
+
+                                card.innerHTML += `
+                                    <p>Análise de Sentimento:</p>
+                                    <div class="sentiment-bar-container">
+                                        <div class="sentiment-bar-positive" style="width: ${sentiment.positive || 0}%;"></div>
+                                        <div class="sentiment-bar-neutral" style="width: ${sentiment.neutral || 0}%;"></div>
+                                        <div class="sentiment-bar-negative" style="width: ${sentiment.negative || 0}%;"></div>
+                                    </div>
+                                    <div class="sentiment-labels">
+                                        <span class="sentiment-label-positive">Positivo (${sentiment.positive || 0}%)</span>
+                                        <span class="sentiment-label-neutral">Neutro (${sentiment.neutral || 0}%)</span>
+                                        <span class="sentiment-label-negative">Negativo (${sentiment.negative || 0}%)</span>
+                                    </div>
+                                    <div class="summary-box">
+                                        <h4>Resumo da Análise (IA Gemini)</h4>
+                                        <p>${summaryText}</p>
+                                    </div>
+                                    <button class="btn-action btn-secondary toggle-raw-responses" data-target="raw-${q.question_id}">Ver Respostas Brutas</button>
+                                    <div id="raw-${q.question_id}" class="raw-responses-container">
+                                        ${rawResponses.length > 0 ? rawResponses.map(res => `<p>"${res}"</p>`).join('') : '<p>Nenhuma resposta bruta disponível.</p>'}
+                                    </div>
+                                `;
+
+                            } else if (q.question_type === 'multiple_choice' || q.question_type === 'checkbox') {
+                                // Cenário 2: Alternativas Fechadas (Gráfico)
+                                const chartData = q.analysis_data.chart_data;
+                                if (chartData && chartData.labels.length > 0) {
+                                    card.innerHTML += `
+                                        <div class="chart-container">
+                                            <canvas id="chart-${q.question_id}"></canvas>
+                                        </div>
+                                    `;
+                                    // Adiciona o gráfico após o card ser adicionado ao DOM
+                                    setTimeout(() => { 
+                                        const ctx = document.getElementById(`chart-${q.question_id}`).getContext('2d');
+                                        new Chart(ctx, {
+                                            type: 'pie', // Pode ser 'bar' também
+                                            data: {
+                                                labels: chartData.labels,
+                                                datasets: [{
+                                                    data: chartData.data,
+                                                    backgroundColor: [
+                                                        'rgba(255, 99, 132, 0.8)', 
+                                                        'rgba(54, 162, 235, 0.8)', 
+                                                        'rgba(255, 206, 86, 0.8)', 
+                                                        'rgba(75, 192, 192, 0.8)', 
+                                                        'rgba(153, 102, 255, 0.8)', 
+                                                        'rgba(255, 159, 64, 0.8)',  
+                                                        'rgba(199, 199, 199, 0.8)', 
+                                                        'rgba(83, 102, 255, 0.8)'   
+                                                    ],
+                                                    borderColor: [
+                                                        'rgba(255, 99, 132, 1)',
+                                                        'rgba(54, 162, 235, 1)',
+                                                        'rgba(255, 206, 86, 1)',
+                                                        'rgba(75, 192, 192, 1)',
+                                                        'rgba(153, 102, 255, 1)',
+                                                        'rgba(255, 159, 64, 1)',
+                                                        'rgba(199, 199, 199, 1)',
+                                                        'rgba(83, 102, 255, 1)'
+                                                    ],
+                                                    borderWidth: 1
+                                                }]
+                                            },
+                                            options: {
+                                                responsive: true,
+                                                maintainAspectRatio: false,
+                                                plugins: {
+                                                    legend: {
+                                                        position: 'right',
+                                                    },
+                                                    title: {
+                                                        display: true,
+                                                        text: `Distribuição de Respostas (${chartData.unit})`
+                                                    }
+                                                }
+                                            }
+                                        });
+                                    }, 0); 
+                                } else {
+                                    card.innerHTML += `<p>Nenhum dado de resposta para exibir.</p>`;
+                                }
+                            }
+                            analysisContainer.appendChild(card);
+                        });
+
+                        // Adiciona listeners para os botões "Ver Respostas Brutas"
+                        document.querySelectorAll('.toggle-raw-responses').forEach(button => {
+                            button.addEventListener('click', function() {
+                                const targetId = this.dataset.target;
+                                const targetDiv = document.getElementById(targetId);
+                                if (targetDiv) {
+                                    targetDiv.style.display = targetDiv.style.display === 'none' || targetDiv.style.display === '' ? 'block' : 'none';
+                                    this.textContent = targetDiv.style.display === 'block' ? 'Ocultar Respostas Brutas' : 'Ver Respostas Brutas';
+                                }
+                            });
+                        });
+
+                    } else {
+                        analysisContainer.innerHTML = '<p>Nenhuma pergunta ou dados de análise disponíveis para este formulário.</p>';
+                    }
+
+                } catch (error) {
+                    console.error('Erro ao buscar dados de análise:', error);
+                    analysisContainer.innerHTML = '<p style="color: red;">Erro ao carregar os resultados da análise. Verifique o console para mais detalhes.</p>';
+                }
+            }
+
+            fetchAndRenderAnalysis();
+        });
+    </script>
 {% endblock %}

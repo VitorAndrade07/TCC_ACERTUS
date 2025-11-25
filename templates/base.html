@@ -2,10 +2,25 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> {# Adicionado para melhor responsividade #}
     <title>{% block title %}ACertus - Plataforma de Satisfação{% endblock %}</title>
+    
+    {# Fontes Google (mantidas do seu amigo) #}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+ 
+    {# Seu CSS global #}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+
+    {# Bibliotecas JavaScript globais (mantidas do seu amigo) #}
     <script src="https://unpkg.com/htmx.org@1.9.10" defer></script>
     <script src="https://unpkg.com/alpinejs@3.13.5" defer></script>
+    {# Chart.js - ESSENCIAL para os gráficos, deve ser carregado antes dos seus scripts que o usam #}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    {# Bloco para scripts adicionais no <head>, como estilos específicos de página #}
+    {% block extra_head_scripts %}{% endblock %} 
 </head>
 <body>
     <div class="sidebar">
@@ -20,8 +35,9 @@
             Sair
         </a>
     </div>
-
+ 
     <div class="main">
+        {# Flash messages (mantidas) #}
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -29,9 +45,12 @@
                 {% endfor %}
             {% endif %}
         {% endwith %}
-
+ 
+        {# Bloco de conteúdo principal da página #}
         {% block content %}{% endblock %}
     </div>
-
+ 
+    {# Bloco para scripts JavaScript adicionais no final do <body> (AQUI ESTAVA O SEU PROBLEMA!) #}
+    {% block extra_body_scripts %}{% endblock %}
 </body>
 </html>

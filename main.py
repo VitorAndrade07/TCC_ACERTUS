@@ -1,26 +1,19 @@
 from fastapi import FastAPI, Depends, HTTPException
 import os
 import pandas as pd
-from azure.core.credentials import AzureKeyCredential
-from azure.ai.textanalytics import TextAnalyticsClient
 from dotenv import load_dotenv
 from typing import Dict, Any, List
-import google.generativeai as genai
+import math # Importado para uso geral, pode ser útil em outras rotas ou aqui.
+
 # Importamos o router que deve conter a rota para os Estilos de Formatação
 from routes.routes import router 
 
+# Importa as funções de injeção de dependência e a função de inicialização
+from clients import initialize_clients, get_azure_client, get_gemini_model, ai_client, gemini_model_instance
+
 # --- 1. CONFIGURAÇÃO INICIAL E VARIÁVEIS DE AMBIENTE ---
-load_dotenv()
-AI_KEY = os.getenv("AI_KEY")
-AI_ENDPOINT = os.getenv("AI_ENDPOINT")
-GEMINI_AI_KEY = os.getenv("GEMINI_AI_KEY")
-
-# Certifique-se de que as chaves estão presentes
-if not AI_KEY or not AI_ENDPOINT:
-    print("AVISO: Chaves 'AI_KEY' ou 'AI_ENDPOINT' não encontradas no .env. O cliente Azure não será autenticado.")
-    # Usaremos None, e o status/startup_event irá reportar o erro.
-
-ai_client = None 
+# As variáveis de ambiente serão carregadas em clients.py, então removemos daqui
+load_dotenv() # Manter para garantir que outros módulos também carreguem se precisarem
 
 # --- 2. INICIALIZAÇÃO DO APP E INCLUSÃO DE ROTAS ---
 app = FastAPI(
@@ -29,66 +22,22 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Inclui o roteador (onde deve estar a rota de Estilos de Formatação)
+# Inclui o roteador
 app.include_router(router) 
 
-ai_client = None
-
-# --- 3. EVENTO DE INICIALIZAÇÃO (SETUP DA AZURE AI) ---
+# --- 3. EVENTO DE INICIALIZAÇÃO (SETUP DA AZURE AI E GEMINI) ---
 @app.on_event("startup")
 def startup_event():
     """
     Função executada na inicialização do servidor.
-    Cria e autentica o cliente do Azure AI Language.
+    Chama a função de inicialização dos clientes de IA.
     """
-    global ai_client
-    if AI_KEY and AI_ENDPOINT:
-        try:
-            credential = AzureKeyCredential(AI_KEY)
-            # Cria a instância do cliente Azure AI Language
-            ai_client = TextAnalyticsClient(endpoint=AI_ENDPOINT, credential=credential)
-            print("Cliente Azure AI autenticado com sucesso.")
-        except Exception as ex:
-            print(f"ERRO na autenticação do cliente Azure AI: {ex}")
-    else:
-        print("Cliente Azure AI não inicializado devido à falta de chaves.")
+    initialize_clients() # Chama a função que agora está em clients.py
 
-    if GEMINI_AI_KEY:
-        try: 
-            gemini_client = genai.configure(api_key=GEMINI_AI_KEY)
-            print("Cliente Gemini AI inicializado com sucesso.")
-        except Exception as ex:
-            print(f"ERRO na inicialização do cliente Gemini AI: {ex}")
-    else:
-        print("Cliente Gemini AI não inicializado devido à falta de chaves.")
+# --- As funções get_azure_client e get_gemini_model foram movidas para clients.py ---
+# Então, removemos as definições delas daqui.
 
-# --- 4. FUNÇÃO PARA INJEÇÃO DE DEPENDÊNCIA ---
-def get_azure_client():
-    """
-    Função geradora usada pelo FastAPI Depends() para injetar
-    o cliente autenticado do Azure AI nas rotas.
-    """
-    global ai_client
-    if not ai_client:
-        raise HTTPException(
-            status_code=503, 
-            detail="Serviço Azure AI Language não está disponível ou não foi autenticado."
-        )
-    yield ai_client
-
-def get_gemini_client():
-    """
-    Função geradora usada pelo FastAPI Depends() para injetar
-    o cliente autenticado do Gemini AI nas rotas.
-    """
-    if not gemini_client:
-        raise HTTPException(
-            status_code=503,
-            detail="Serviço Gemini AI não está disponível ou não foi autenticado."
-        )
-    yield gemini_client
-
-# --- 5. ROTA DE SAUDAÇÃO E STATUS (CORRIGE O 404 NA RAIZ) ---
+# --- 5. ROTA DE SAUDAÇÃO E STATUS ---
 
 @app.get("/", tags=["Status"])
 def read_root():
@@ -100,11 +49,13 @@ def read_root():
 @app.get("/status", tags=["Status"])
 def api_status():
     """
-    Verifica o status da API e da conexão com o Azure AI.
+    Verifica o status da API e da conexão com o Azure AI e Gemini.
     """
+    # Agora usamos as variáveis globais de clients.py
     status = {
         "api_online": True,
-        "azure_ai_client_ready": ai_client is not None
+        "azure_ai_client_ready": ai_client is not None,
+        "gemini_model_ready": gemini_model_instance is not None 
     }
     return status
 
@@ -126,7 +77,6 @@ def listar_feedbacks():
         if arquivo.endswith(".txt"):
             caminho = os.path.join(pasta_feedbacks, arquivo)
             try:
-                # Usamos 'with open' para garantir que o arquivo seja fechado
                 with open(caminho, "r", encoding="utf-8") as f:
                     texto = f.read().strip()
                 feedbacks.append({"Arquivo": arquivo, "Feedback": texto})
@@ -134,8 +84,5 @@ def listar_feedbacks():
                 print(f"Erro ao ler o arquivo {arquivo}: {e}")
                 feedbacks.append({"Arquivo": arquivo, "Feedback": f"ERRO: Não foi possível ler o arquivo. {e}"})
 
-    # Converte para DataFrame e depois para lista de dicionários
-    # Note: O uso de pandas para esta conversão simples não é ideal, 
-    # mas mantive a sua lógica. Para performance, seria melhor retornar a lista 'feedbacks' diretamente.
     df_feedbacks = pd.DataFrame(feedbacks)
     return df_feedbacks.to_dict(orient="records")
