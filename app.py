@@ -21,6 +21,28 @@ DB_CONFIG = {
 # URL base do seu servidor FastAPI (ajuste se ele estiver em outro lugar ou porta)
 FASTAPI_BASE_URL = "http://localhost:8000"  
 
+def call_fastapi_full_analysis(texts: List[str]) -> Dict[str, Any]:
+    url = f"{FASTAPI_BASE_URL}/analyze/full" # CHAMA A ROTA UNIFICADA
+    
+    if not texts:
+        return {
+            "sentiment": {"positive": 0.0, "neutral": 0.0, "negative": 0.0},
+            "summary": {"summary_text": "Sem respostas suficientes para análise."}
+        }
+
+    try:
+        # Enviamos a lista de textos (payload)
+        response = requests.post(url, json=texts, timeout=30) # Aumentamos o timeout
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"ERRO DE CONEXÃO com o FastAPI (ou timeout): {e}")
+        # Retorna um resultado de erro que o frontend pode exibir
+        return {
+            "sentiment": {"positive": 0.0, "neutral": 0.0, "negative": 0.0},
+            "summary": {"summary_text": f"ERRO ao conectar ao servidor de IA: {e}"}
+        }
+
 # --- Funções para chamar a API FastAPI ---
 def call_fastapi_sentiment_analysis(texts: List[str]) -> Dict[str, float]:
     """Chama a API FastAPI para análise de sentimento."""
@@ -530,14 +552,10 @@ def form_results(form_id):
 
     return render_template('form_results.html', form=form) # Passamos apenas o 'form'
 
-@app.route('/api/form/<int:form_id>/analysis', methods=['GET']) # Esta é a rota API que o JS no front-end chamará
+@app.route('/api/form/<int:form_id>/analysis', methods=['GET'])
 def get_form_analysis_data(form_id):
     if 'user_id' not in session:
         return jsonify({"error": "Não autenticado"}), 401
-
-    form, questions = fetch_form_with_questions(form_id, session['user_id'])
-    if not form:
-        return jsonify({"error": "Formulário não encontrado ou sem permissão"}), 404
 
     conn = get_db_connection()
     if not conn:
@@ -545,16 +563,46 @@ def get_form_analysis_data(form_id):
         
     cursor = conn.cursor(dictionary=True)
 
+    # 1. Verificar se o formulário existe e pertence ao usuário
+    cursor.execute("SELECT id, title FROM forms WHERE id = %s AND user_id = %s", (form_id, session['user_id']))
+    form = cursor.fetchone()
+    if not form:
+        conn.close()
+        return jsonify({"error": "Formulário não encontrado ou sem permissão"}), 404
+
+    # 2. Descobrir quantas respostas existem AGORA
+    cursor.execute("SELECT COUNT(id) AS total FROM responses WHERE form_id = %s", (form_id,))
+    current_total_responses = cursor.fetchone()['total']
+
+    # --- LÓGICA DE CACHE (Verifica se já existe análise pronta) ---
+    cursor.execute("SELECT response_count, analysis_data FROM analysis_cache WHERE form_id = %s", (form_id,))
+    cached_result = cursor.fetchone()
+
+    # Se achou cache E o número de respostas é igual ao atual...
+    if cached_result and cached_result['response_count'] == current_total_responses:
+        print(f"⚡ CACHE ACERTOU: Usando dados salvos para o form {form_id}")
+        conn.close()
+        
+        data = cached_result['analysis_data']
+        # Se o banco devolveu como string, converte para JSON
+        if isinstance(data, str):
+            data = json.loads(data)
+            
+        return jsonify(data)
+
+    print(f"🐢 CACHE MISS: Gerando nova análise com IA para o form {form_id}...")
+    
+    # --- SE NÃO TEM CACHE, GERA A ANÁLISE (Lento) ---
+
+    # Reutilizamos sua função helper para pegar as perguntas
+    _, questions = fetch_form_with_questions(form_id, session['user_id'])
+    
     analysis_results = {
         "form_id": form['id'],
         "form_title": form['title'],
+        "total_responses": current_total_responses,
         "questions_analysis": []
     }
-    
-    # 1. Total de respostas (agora incluído no JSON da API)
-    cursor.execute("SELECT COUNT(id) AS total FROM responses WHERE form_id = %s", (form_id,))
-    total_responses_count = cursor.fetchone()['total']
-    analysis_results['total_responses'] = total_responses_count
 
     for q in questions:
         q_analysis = {
@@ -564,27 +612,32 @@ def get_form_analysis_data(form_id):
             "analysis_data": {}
         }
         
-        # Cenário 1: Perguntas abertas (tipo 'text')
+        # Cenário 1: Perguntas de Texto (Chama a IA)
         if q['question_type'] == 'text':
             cursor.execute("""
                 SELECT answer_text FROM answers
                 WHERE question_id = %s AND answer_text IS NOT NULL AND answer_text != ''
                 ORDER BY id DESC
             """, (q['id'],))
-            # Garante que apenas respostas não vazias sejam enviadas para a IA
+            
             raw_texts = [row['answer_text'] for row in cursor.fetchall() if row['answer_text'].strip()]
 
             # CHAMA AS APIS FASTAPI
-            sentiment_data = call_fastapi_sentiment_analysis(raw_texts)
-            summary_text = call_fastapi_gemini_summary(raw_texts)
+            if raw_texts:
+                full_analysis = call_fastapi_full_analysis(raw_texts)
+                sentiment_data = full_analysis['sentiment']
+                summary_text = full_analysis['summary']['summary_text']
+            else:
+                sentiment_data = {"positive": 0, "neutral": 0, "negative": 0}
+                summary_text = "Sem respostas suficientes para análise."
 
             q_analysis['analysis_data'] = {
                 "summary_text": summary_text,
                 "sentiment": sentiment_data,
-                "raw_responses": raw_texts # Opcional, para debug ou exibir individualmente
+                "raw_responses": raw_texts 
             }
 
-        # Cenário 2: Perguntas fechadas ('multiple_choice', 'checkbox')
+        # Cenário 2: Múltipla Escolha (Gráfico)
         elif q['question_type'] in ['multiple_choice', 'checkbox']:
             cursor.execute("""
                 SELECT qo.option_text, COUNT(a.id) as vote_count
@@ -596,11 +649,9 @@ def get_form_analysis_data(form_id):
             """, (q['id'],))
             option_stats = cursor.fetchall()
 
-            # Processa os dados para o gráfico
             labels = [s['option_text'] for s in option_stats]
-            total_votes_for_question = sum(s['vote_count'] for s in option_stats)
-            # Calcula porcentagens, garantindo divisão por zero
-            data = [round((s['vote_count'] / total_votes_for_question) * 100, 1) if total_votes_for_question > 0 else 0 for s in option_stats]
+            total_votes = sum(s['vote_count'] for s in option_stats)
+            data = [round((s['vote_count'] / total_votes) * 100, 1) if total_votes > 0 else 0 for s in option_stats]
 
             q_analysis['analysis_data'] = {
                 "chart_data": {
@@ -612,6 +663,24 @@ def get_form_analysis_data(form_id):
         
         analysis_results['questions_analysis'].append(q_analysis)
 
+    # --- SALVAR O NOVO RESULTADO NO CACHE ---
+    try:
+        json_data = json.dumps(analysis_results)
+        
+        cursor.execute("""
+            INSERT INTO analysis_cache (form_id, response_count, analysis_data)
+            VALUES (%s, %s, %s)
+            ON DUPLICATE KEY UPDATE 
+                response_count = VALUES(response_count),
+                analysis_data = VALUES(analysis_data)
+        """, (form_id, current_total_responses, json_data))
+        
+        conn.commit()
+        print("💾 Dados salvos no cache.")
+        
+    except Exception as e:
+        print(f"Erro ao salvar cache: {e}")
+    
     conn.close()
     return jsonify(analysis_results)
 
