@@ -39,22 +39,31 @@
         {% endif %}
     </div>
  
-    <h2 style="margin-top: 50px;">Formulários que Respondi</h2>
-    <div class="form-list">
-        {% if forms_answered %}
-            {% for form in forms_answered %}
-                <div class="form-card answered-card">
-                    <h3>{{ form.title }}</h3>
-                    <p>{{ form.description or 'Sem descrição' }}</p>
-                    <div class="form-card-actions">
-                        <a href="#" class="btn btn-info">Minha Resposta</a>
-                        <a href="{{ url_for('view_form', form_id=form.id) }}" target="_blank" class="btn btn-share">Ver Formulário</a>
+    <div x-data="{ open: false }" style="margin-top: 50px; margin-bottom: 50px;">
+       
+        <div @click="open = !open" class="accordion-header">
+            <h2>Formulários que Respondi</h2>
+            <svg :class="{'rotate-180': open}" class="accordion-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6 9L12 15L18 9" stroke="#6a0dad" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+ 
+        <div x-show="open" x-transition.opacity.duration.300ms class="form-list" style="margin-top: 20px;">
+            {% if forms_answered %}
+                {% for form in forms_answered %}
+                    <div class="form-card answered-card">
+                        <h3>{{ form.title }}</h3>
+                        <p>{{ form.description or 'Sem descrição' }}</p>
+                        <div class="form-card-actions">
+                            <a href="{{ url_for('view_my_response', form_id=form.id) }}" class="btn btn-info">Minha Resposta</a>
+                            <a href="{{ url_for('view_form', form_id=form.id) }}" target="_blank" class="btn btn-share">Ver Formulário</a>
+                        </div>
+                        <small>Respondido em: {{ form.submitted_at.strftime('%d/%m/%Y %H:%M') }}</small>
                     </div>
-                    <small>Respondido em: {{ form.submitted_at.strftime('%d/%m/%Y %H:%M') }}</small>
-                </div>
-            {% endfor %}
-        {% else %}
-            <p class="no-forms-message">Você ainda não respondeu a nenhum formulário.</p>
-        {% endif %}
+                {% endfor %}
+            {% else %}
+                <p class="no-forms-message">Você ainda não respondeu a nenhum formulário.</p>
+            {% endif %}
+        </div>
     </div>
 {% endblock %}

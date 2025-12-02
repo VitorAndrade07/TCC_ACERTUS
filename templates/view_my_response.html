@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+ 
+{% block title %}Minha Resposta: {{ form.title }} | ACertus{% endblock %}
+ 
+{% block content %}
+<div class="form-creation-container" style="max-width: 800px;">
+    <div class="header" style="border-bottom: 1px solid #eee; padding-bottom: 20px; margin-bottom: 30px; display: block;">
+        <span style="background: #e8f0fe; color: #174ea6; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; float: right;">
+            Modo Leitura
+        </span>
+        <h1 style="font-size: 28px; margin-bottom: 10px;">{{ form.title }}</h1>
+        <p style="color: #666;">{{ form.description }}</p>
+    </div>
+   
+    <div class="questions-review">
+        {% for q in questions %}
+            {% set u_ans = user_answers.get(q.id, {'text': '', 'options': []}) %}
+           
+            <div class="question-card" style="border-left: 5px solid #5bc0de; cursor: default;">
+                <label class="question-label" style="font-weight: bold; display: block; margin-bottom: 15px; font-size: 18px;">
+                    {{ loop.index }}. {{ q.question_text }}
+                </label>
+               
+                {% if q.question_type == 'text' %}
+                    <div style="background: #f8f9fa; padding: 15px; border: 1px solid #ddd; border-radius: 8px; color: #333; min-height: 50px;">
+                        {{ u_ans.text or 'Checking...' }}
+                        {% if not u_ans.text %}<em style="color:#999">(Sem resposta de texto)</em>{% endif %}
+                    </div>
+ 
+                {% elif q.question_type == 'multiple_choice' %}
+                    {% for opt in q.options %}
+                        {% if opt.id in u_ans.options %}
+                            <div style="display: flex; align-items: center; margin-bottom: 8px; padding: 8px; border-radius: 6px; background-color: #e8f0fe;">
+                                <input type="radio" disabled checked style="margin-right: 10px;">
+                                <label style="color: #174ea6; font-weight: bold;">
+                                    {{ opt.option_text }}
+                                </label>
+                                <span style="margin-left:auto; font-size: 12px; color: #174ea6;">✓ Escolhido</span>
+                            </div>
+                        {% else %}
+                            <div style="display: flex; align-items: center; margin-bottom: 8px; padding: 8px; border-radius: 6px;">
+                                <input type="radio" disabled style="margin-right: 10px;">
+                                <label style="color: #777;">
+                                    {{ opt.option_text }}
+                                </label>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+ 
+                {% elif q.question_type == 'checkbox' %}
+                    {% for opt in q.options %}
+                        {% if opt.id in u_ans.options %}
+                            <div style="display: flex; align-items: center; margin-bottom: 8px; padding: 8px; border-radius: 6px; background-color: #e8f0fe;">
+                                <input type="checkbox" disabled checked style="margin-right: 10px;">
+                                <label style="color: #174ea6; font-weight: bold;">
+                                    {{ opt.option_text }}
+                                </label>
+                                <span style="margin-left:auto; font-size: 12px; color: #174ea6;">✓ Escolhido</span>
+                            </div>
+                        {% else %}
+                            <div style="display: flex; align-items: center; margin-bottom: 8px; padding: 8px; border-radius: 6px;">
+                                <input type="checkbox" disabled style="margin-right: 10px;">
+                                <label style="color: #777;">
+                                    {{ opt.option_text }}
+                                </label>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+ 
+    <div style="text-align: center; margin-top: 30px;">
+        <a href="{{ url_for('dashboard') }}" class="btn-create">Voltar ao Dashboard</a>
+    </div>
+</div>
+{% endblock %}

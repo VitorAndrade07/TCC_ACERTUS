@@ -4,71 +4,25 @@ from mysql.connector import Error
 import json
 from werkzeug.security import generate_password_hash, check_password_hash
 import requests # Para fazer requisições à API FastAPI
-from typing import List, Dict, Any # Para tipagem, útil para clareza
+from typing import List, Dict, Any
 
 app = Flask(__name__)
-# CHAVE SECRETA CRÍTICA PARA SESSÕES E SEGURANÇA. MUDE EM PRODUÇÃO!
+# CHAVE SECRETA CRÍTICA PARA SESSÕES E SEGURANÇA.
 app.secret_key = 'acertus_super_secret_key_pro'
 
-# Configuração do Banco de Dados
+# --- Configurações ---
+
 DB_CONFIG = {
     'host': 'localhost',
     'user': 'root',
-    'password': 'admin', # Altere com sua senha de banco de dados
+    'password': 'admin', # Altere com sua senha
     'database': 'acertus_db'
 }
 
-# URL base do seu servidor FastAPI (ajuste se ele estiver em outro lugar ou porta)
+# URL base do servidor FastAPI
 FASTAPI_BASE_URL = "http://localhost:8000"  
 
-def call_fastapi_full_analysis(texts: List[str]) -> Dict[str, Any]:
-    url = f"{FASTAPI_BASE_URL}/analyze/full" # CHAMA A ROTA UNIFICADA
-    
-    if not texts:
-        return {
-            "sentiment": {"positive": 0.0, "neutral": 0.0, "negative": 0.0},
-            "summary": {"summary_text": "Sem respostas suficientes para análise."}
-        }
-
-    try:
-        # Enviamos a lista de textos (payload)
-        response = requests.post(url, json=texts, timeout=30) # Aumentamos o timeout
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"ERRO DE CONEXÃO com o FastAPI (ou timeout): {e}")
-        # Retorna um resultado de erro que o frontend pode exibir
-        return {
-            "sentiment": {"positive": 0.0, "neutral": 0.0, "negative": 0.0},
-            "summary": {"summary_text": f"ERRO ao conectar ao servidor de IA: {e}"}
-        }
-
-# --- Funções para chamar a API FastAPI ---
-def call_fastapi_sentiment_analysis(texts: List[str]) -> Dict[str, float]:
-    """Chama a API FastAPI para análise de sentimento."""
-    try:
-        # Envia a lista de textos diretamente como JSON
-        response = requests.post(f"{FASTAPI_BASE_URL}/analyze/sentiment", json=texts)
-        response.raise_for_status() # Lança um erro para status codes 4xx/5xx
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"Erro ao chamar API de sentimento: {e}")
-        # Retorna valores padrão em caso de erro para não quebrar a aplicação
-        return {"positive": 0.0, "neutral": 0.0, "negative": 0.0}
-
-def call_fastapi_gemini_summary(texts: List[str]) -> str:
-    """Chama a API FastAPI para gerar um resumo com Gemini."""
-    try:
-        # Envia a lista de textos diretamente como JSON
-        response = requests.post(f"{FASTAPI_BASE_URL}/generate/summary", json=texts)
-        response.raise_for_status()
-        # A API FastAPI retorna um dict como {"summary_text": "..."}
-        return response.json().get("summary_text", "Não foi possível gerar um resumo.")
-    except requests.exceptions.RequestException as e:
-        print(f"Erro ao chamar API Gemini: {e}")
-        return "Erro ao gerar resumo da IA."
-
-# --- Conexão com o Banco de Dados ---
+# --- Funções Auxiliares (IA e Banco) ---
 
 def get_db_connection():
     """Tenta estabelecer a conexão com o banco de dados."""
@@ -78,12 +32,8 @@ def get_db_connection():
         print(f"Erro ao conectar ao MySQL: {e}")
         return None
 
-# --- Helpers de Banco de Dados (Mantidos do seu amigo, são idênticos) ---
 def fetch_form_with_questions(form_id, user_id=None):
-    """
-    Busca um formulário, suas perguntas e opções.
-    Esta função garante que o texto da pergunta mais recente seja buscado.
-    """
+    """Busca formulário e perguntas."""
     conn = get_db_connection()
     if not conn: return None, None
     cursor = conn.cursor(dictionary=True)
@@ -96,13 +46,12 @@ def fetch_form_with_questions(form_id, user_id=None):
         conn.close()
         return None, None
 
-    # Verifica permissão do usuário (apenas se user_id for fornecido, como na rota de edição ou resultados)
+    # Verifica permissão (se user_id for passado)
     if user_id and form['user_id'] != user_id:
         conn.close()
         return None, None
 
     # 2. Buscar perguntas
-    # ESSA QUERY RECUPERA O 'question_text' ATUALIZADO
     cursor.execute("""
         SELECT id, form_id, question_text, question_type, is_required FROM questions
         WHERE form_id = %s
@@ -110,7 +59,7 @@ def fetch_form_with_questions(form_id, user_id=None):
     """, (form_id,))
     questions = cursor.fetchall()
 
-    # 3. Buscar opções para cada pergunta (se aplicável)
+    # 3. Buscar opções
     for q in questions:
         q['options'] = []
         if q['question_type'] in ['multiple_choice', 'checkbox']:
@@ -120,7 +69,28 @@ def fetch_form_with_questions(form_id, user_id=None):
     conn.close()
     return form, questions
 
-# --- Rotas de Autenticação e Dashboard (Mantidas do seu amigo, idênticas) ---
+def call_fastapi_full_analysis(texts: List[str]) -> Dict[str, Any]:
+    """Chama a API FastAPI unificada para análise."""
+    url = f"{FASTAPI_BASE_URL}/analyze/full"
+    
+    if not texts:
+        return {
+            "sentiment": {"positive": 0.0, "neutral": 0.0, "negative": 0.0},
+            "summary": {"summary_text": "Sem respostas suficientes para análise."}
+        }
+
+    try:
+        response = requests.post(url, json=texts, timeout=30)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"ERRO DE CONEXÃO com o FastAPI: {e}")
+        return {
+            "sentiment": {"positive": 0.0, "neutral": 0.0, "negative": 0.0},
+            "summary": {"summary_text": f"ERRO ao conectar ao servidor de IA: {e}"}
+        }
+
+# --- Rotas de Autenticação ---
 
 @app.route('/')
 def home():
@@ -135,13 +105,13 @@ def login():
         password = request.form['password']
         conn = get_db_connection()
         if not conn:
-            flash('Erro de conexão com o banco de dados.', 'danger')
+            flash('Erro de conexão com o banco.', 'danger')
             return render_template('login.html')
         cursor = conn.cursor(dictionary=True)
         cursor.execute("SELECT * FROM users WHERE email=%s", (email,))
         user = cursor.fetchone()
         conn.close()
-        # Verificação segura de senha
+        
         if user and check_password_hash(user['password'], password):
             session['user_id'] = user['id']
             session['user_name'] = user['name']
@@ -158,23 +128,21 @@ def register():
         password = request.form['password']
         conn = get_db_connection()
         if not conn:
-            flash('Erro de conexão com o banco de dados.', 'danger')
             return render_template('register.html')
         cursor = conn.cursor(dictionary=True)
         cursor.execute("SELECT * FROM users WHERE email=%s", (email,))
-        user = cursor.fetchone()
-        if user:
-            flash('Conta já existe com este email!', 'warning')
+        
+        if cursor.fetchone():
+            flash('Conta já existe!', 'warning')
         else:
-            # GERA O HASH SEGURO DA SENHA
             hashed_password = generate_password_hash(password)
             try:
                 cursor.execute("INSERT INTO users (name, email, password) VALUES (%s, %s, %s)", (name, email, hashed_password))
                 conn.commit()
-                flash('Conta criada com sucesso! Faça login.', 'success')
+                flash('Conta criada! Faça login.', 'success')
                 return redirect(url_for('login'))
             except Error as e:
-                flash(f'Ocorreu um erro ao registrar: {e}', 'danger')
+                flash(f'Erro: {e}', 'danger')
         conn.close()
     return render_template('register.html')
 
@@ -184,6 +152,8 @@ def logout():
     flash('Você saiu da sua conta.', 'info')
     return redirect(url_for('login'))
 
+# --- DASHBOARD (Com CORREÇÃO DE SQL) ---
+
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session:
@@ -191,16 +161,22 @@ def dashboard():
     
     conn = get_db_connection()
     if not conn:
-        flash('Erro de conexão com o banco de dados.', 'danger')
+        flash('Erro de conexão com o banco.', 'danger')
         return redirect(url_for('logout'))
 
     cursor = conn.cursor(dictionary=True)
+    user_id = session['user_id']
     
-    # Formulários Criados
-    cursor.execute("SELECT * FROM forms WHERE user_id = %s ORDER BY created_at DESC", (session['user_id'],))
+    # 1. Buscar Listas de Formulários
+    cursor.execute("""
+        SELECT f.*, 
+        (SELECT COUNT(*) FROM responses r WHERE r.form_id = f.id) as response_count
+        FROM forms f 
+        WHERE f.user_id = %s 
+        ORDER BY f.created_at DESC
+    """, (user_id,))
     forms_created = cursor.fetchall()
 
-    # Formulários Respondidos
     cursor.execute("""
         SELECT f.*, r.submitted_at
         FROM responses r
@@ -208,481 +184,361 @@ def dashboard():
         WHERE r.user_id = %s
         GROUP BY f.id, r.submitted_at
         ORDER BY r.submitted_at DESC
-    """, (session['user_id'],))
+    """, (user_id,))
     forms_answered = cursor.fetchall()
+
+    # 2. CALCULAR ESTATÍSTICAS (STATS) para o novo HTML
+    
+    # A. Totais Simples
+    total_forms_created = len(forms_created)
+    total_forms_answered = len(forms_answered)
+    total_responses_received = sum(f['response_count'] for f in forms_created)
+    
+    # Pendentes (Exemplo: Total Forms no sistema que não são meus e eu não respondi)
+    cursor.execute("""
+        SELECT COUNT(f.id) as pending
+        FROM forms f
+        WHERE f.user_id != %s 
+        AND f.id NOT IN (SELECT form_id FROM responses WHERE user_id = %s)
+    """, (user_id, user_id))
+    pending_forms_count = cursor.fetchone()['pending']
+
+    # B. Gráfico 1: Respostas por Mês (CORRIGIDO: ORDER BY MIN)
+    cursor.execute("""
+        SELECT DATE_FORMAT(r.submitted_at, '%b') as month_name, COUNT(r.id) as count
+        FROM responses r
+        JOIN forms f ON r.form_id = f.id
+        WHERE f.user_id = %s
+        GROUP BY DATE_FORMAT(r.submitted_at, '%Y-%m'), month_name
+        ORDER BY MIN(r.submitted_at) ASC
+        LIMIT 6
+    """, (user_id,))
+    month_data = cursor.fetchall()
+    
+    graph_labels = [row['month_name'] for row in month_data]
+    graph_values = [row['count'] for row in month_data]
+    
+    if not graph_labels:
+        graph_labels = ['Sem dados']
+        graph_values = [0]
+
+    # C. Montar objeto STATS
+    stats = {
+        'total_forms': total_forms_created,
+        'total_responses': total_responses_received,
+        'forms_answered_count': total_forms_answered,
+        'forms_to_answer_count': pending_forms_count,
+        
+        'responses_by_month': {
+            'labels': graph_labels,
+            'data': graph_values
+        },
+        'forms_answered_distribution': {
+            'labels': ['Respondidos', 'Pendentes'],
+            'data': [total_forms_answered, pending_forms_count]
+        }
+    }
     
     conn.close()
     
     return render_template('dashboard.html',
         user_name=session['user_name'],
         forms_created=forms_created,
-        forms_answered=forms_answered
+        forms_answered=forms_answered,
+        stats=stats 
     )
 
-# --- Rotas de Gerenciamento de Formulário (Mantidas do seu amigo, idênticas) ---
+# --- Gerenciamento de Formulários (CRUD + HTMX) ---
 
 @app.route('/form/create', methods=['GET', 'POST'])
 def create_form():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
+    if 'user_id' not in session: return redirect(url_for('login'))
     
     if request.method == 'POST':
         title = request.form['title']
         description = request.form['description']
-        user_id = session['user_id']
-        
         conn = get_db_connection()
-        if not conn:
-            flash('Erro de conexão com o banco de dados.', 'danger')
-            return redirect(url_for('create_form'))
-
-        cursor = conn.cursor()
-        try:
+        if conn:
+            cursor = conn.cursor()
             cursor.execute("INSERT INTO forms (user_id, title, description) VALUES (%s, %s, %s)",
-                           (user_id, title, description))
+                           (session['user_id'], title, description))
             conn.commit()
-            new_form_id = cursor.lastrowid
-            flash('Formulário criado! Agora configure as perguntas.', 'success')
-            return redirect(url_for('edit_form', form_id=new_form_id))
-        except Error as e:
-            flash(f'Ocorreu um erro ao criar o formulário: {e}', 'danger')
-        finally:
+            new_id = cursor.lastrowid
             conn.close()
+            return redirect(url_for('edit_form', form_id=new_id))
             
     return render_template('create_form.html')
 
 @app.route('/form/<int:form_id>/edit')
 def edit_form(form_id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    
-    # Busca o formulário e verifica permissão
+    if 'user_id' not in session: return redirect(url_for('login'))
     form, questions = fetch_form_with_questions(form_id, session['user_id'])
-
     if not form:
-        flash('Formulário não encontrado ou você não tem permissão para editá-lo.', 'danger')
+        flash('Acesso negado ou não encontrado.', 'danger')
         return redirect(url_for('dashboard'))
-    
-    # Usa json.dumps para passar opções de forma segura para o front-end
     return render_template('form_editor.html', form=form, questions=questions, json_dump=json.dumps)
 
 @app.route('/form/<int:form_id>/delete', methods=['DELETE'])
 def delete_form(form_id):
-    if 'user_id' not in session:
-        return jsonify({'error': 'Não autorizado.'}), 401
-    
+    if 'user_id' not in session: return jsonify({'error': '401'}), 401
     conn = get_db_connection()
-    if not conn:
-        return jsonify({'error': 'Erro de conexão com o banco de dados.'}), 500
-    
-    cursor = conn.cursor(dictionary=True)
-
-    cursor.execute("SELECT id, user_id FROM forms WHERE id = %s", (form_id,))
-    form_to_delete = cursor.fetchone()
-
-    if not form_to_delete or form_to_delete['user_id'] != session['user_id']:
+    if conn:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT user_id FROM forms WHERE id=%s", (form_id,))
+        form = cursor.fetchone()
+        if form and form['user_id'] == session['user_id']:
+            cursor.execute("DELETE FROM forms WHERE id=%s", (form_id,))
+            conn.commit()
+            conn.close()
+            return ('', 204) # Sucesso HTMX
         conn.close()
-        return jsonify({'error': 'Acesso negado.'}), 403
+    return jsonify({'error': 'Erro'}), 500
 
-    try:
-        # Executa a deleção
-        cursor.execute("DELETE FROM forms WHERE id = %s", (form_id,))
-        conn.commit()
-        
-        # RETORNO CRÍTICO: 204 No Content para HTMX delete
-        return ('', 204)
+# --- HTMX para Perguntas (Editor) ---
 
-    except Error as e:
-        conn.rollback()
-        print(f"Erro ao deletar o formulário {form_id}: {e}")
-        return jsonify({'error': f'Erro interno ao deletar: {e}'}), 500
-    finally:
-        conn.close()
-
-# --- HTMX/API: Operações no Editor (Mantidas do seu amigo, idênticas) ---
 @app.route('/question/add/<int:form_id>', methods=['POST'])
 def add_question(form_id):
-    """Adiciona uma nova pergunta via requisição HTMX e retorna o HTML parcial."""
-    if 'user_id' not in session:
-        return '', 401
+    if 'user_id' not in session: return '', 401
+    q_type = request.form['type']
     
-    question_type = request.form['type']
-    
-    # 1. Verifica permissão
+    # Verifica dono do form
     form, _ = fetch_form_with_questions(form_id, session['user_id'])
-    if not form:
-        return '', 403
+    if not form: return '', 403
 
     conn = get_db_connection()
-    if not conn: return '', 500
     cursor = conn.cursor()
     
-    try:
-        # Pega a próxima ordem
-        cursor.execute("SELECT MAX(order_index) FROM questions WHERE form_id = %s", (form_id,))
-        max_order = cursor.fetchone()[0]
-        new_order = (max_order or 0) + 1
-        
-        # Insere a nova pergunta
-        cursor.execute(
-            "INSERT INTO questions (form_id, question_text, question_type, order_index) VALUES (%s, %s, %s, %s)",
-            (form_id, f"Nova Pergunta de {question_type.replace('_', ' ').title()}", question_type, new_order)
-        )
+    cursor.execute("SELECT MAX(order_index) FROM questions WHERE form_id=%s", (form_id,))
+    max_order = cursor.fetchone()[0] or 0
+    
+    cursor.execute("INSERT INTO questions (form_id, question_text, question_type, order_index) VALUES (%s, %s, %s, %s)",
+                   (form_id, f"Nova Pergunta ({q_type})", q_type, max_order+1))
+    conn.commit()
+    new_qid = cursor.lastrowid
+    
+    new_q = {'id': new_qid, 'question_text': f"Nova Pergunta ({q_type})", 'question_type': q_type, 'options': [], 'is_required': 0}
+
+    if q_type in ['multiple_choice', 'checkbox']:
+        cursor.execute("INSERT INTO question_options (question_id, option_text) VALUES (%s, 'Opção 1')", (new_qid,))
         conn.commit()
-        new_question_id = cursor.lastrowid
-
-        # Prepara a pergunta para renderização
-        new_question = {
-            'id': new_question_id,
-            'question_text': f"Nova Pergunta de {question_type.replace('_', ' ').title()}",
-            'question_type': question_type,
-            'options': [],
-            'is_required': 0
-        }
-
-        # Se for múltipla escolha/checkbox, adiciona uma opção padrão e a retorna
-        if question_type in ['multiple_choice', 'checkbox']:
-            cursor.execute(
-                "INSERT INTO question_options (question_id, option_text) VALUES (%s, %s)",
-                (new_question_id, "Opção Padrão 1")
-            )
-            conn.commit()
-            new_option_id = cursor.lastrowid
-            new_question['options'].append({'id': new_option_id, 'option_text': 'Opção Padrão 1'})
-            
-        conn.close()
-        
-        # Retorna o template parcial para HTMX
-        return render_template('question_partial.html', q=new_question, form_id=form_id, json_dump=json.dumps)
-        
-    except Error as e:
-        print(f"Erro ao adicionar pergunta: {e}")
-        conn.close()
-        return 'Erro interno ao adicionar pergunta', 500
+        new_q['options'].append({'id': cursor.lastrowid, 'option_text': 'Opção 1'})
+    
+    conn.close()
+    return render_template('question_partial.html', q=new_q, form_id=form_id, json_dump=json.dumps)
 
 @app.route('/question/update/<int:question_id>', methods=['POST'])
 def update_question(question_id):
-    """
-    Atualiza o texto da pergunta e suas opções (via HTMX).
-    """
-    if 'user_id' not in session:
-        return '', 401
-
+    if 'user_id' not in session: return '', 401
     conn = get_db_connection()
-    if not conn: return 'Erro de conexão', 500
     cursor = conn.cursor(dictionary=True)
-
-    # 1. Obter form_id e verificar permissão (SEGURANÇA CRÍTICA)
-    cursor.execute("""
-        SELECT f.user_id, q.question_type
-        FROM questions q
-        JOIN forms f ON q.form_id = f.id
-        WHERE q.id = %s
-    """, (question_id,))
-    question_info = cursor.fetchone()
     
-    if not question_info or question_info['user_id'] != session['user_id']:
+    # Verifica permissão
+    cursor.execute("SELECT f.user_id FROM questions q JOIN forms f ON q.form_id=f.id WHERE q.id=%s", (question_id,))
+    row = cursor.fetchone()
+    if not row or row['user_id'] != session['user_id']:
         conn.close()
-        return 'Não autorizado ou pergunta não encontrada', 403
+        return 'Erro', 403
 
-    # 2. Coletar dados da requisição (USANDO NOMES CORRETOS DO ALPINE/HTMX)
-    new_text = request.form.get('questionText')
-    options_data_str = request.form.get('options_data')
-    is_required = 1 if request.form.get('isRequired') == 'true' else 0
-
-    try:
-        # 3. ATUALIZAR texto e obrigação da pergunta no banco de dados
-        cursor.execute(
-            "UPDATE questions SET question_text = %s, is_required = %s WHERE id = %s",
-            (new_text, is_required, question_id)
-        )
-        
-        # 4. Atualizar opções, se aplicável
-        if question_info['question_type'] in ['multiple_choice', 'checkbox'] and options_data_str:
-            options = json.loads(options_data_str)
-            
-            # Remove todas as opções existentes
-            cursor.execute("DELETE FROM question_options WHERE question_id = %s", (question_id,))
-
-            # Insere as novas opções
-            for opt in options:
-                if opt.get('text', '').strip():
-                    cursor.execute(
-                        "INSERT INTO question_options (question_id, option_text) VALUES (%s, %s)",
-                        (question_id, opt['text'])
-                    )
-        
-        # 5. SALVAR AS MUDANÇAS NO BANCO (CRÍTICO)
-        conn.commit()
-        conn.close()
-        return '<span class="saved-ok">Salvo!</span>', 200
-    except Exception as e:
-        print(f"Erro ao atualizar pergunta {question_id}: {e}")
-        conn.rollback()
-        conn.close()
-        return 'Erro ao salvar: ' + str(e), 500
+    # Atualiza
+    text = request.form.get('questionText')
+    req = 1 if request.form.get('isRequired') == 'true' else 0
+    opts = request.form.get('options_data')
     
+    cursor.execute("UPDATE questions SET question_text=%s, is_required=%s WHERE id=%s", (text, req, question_id))
+    
+    if opts:
+        import json
+        options = json.loads(opts)
+        cursor.execute("DELETE FROM question_options WHERE question_id=%s", (question_id,))
+        for o in options:
+            if o.get('text', '').strip():
+                cursor.execute("INSERT INTO question_options (question_id, option_text) VALUES (%s, %s)", (question_id, o['text']))
+    
+    conn.commit()
+    conn.close()
+    return '<span class="saved-ok">Salvo!</span>', 200
+
 @app.route('/question/delete/<int:question_id>', methods=['DELETE'])
 def delete_question(question_id):
-    """Deleta uma pergunta (via HTMX)."""
-    if 'user_id' not in session:
-        return '', 401
-
+    if 'user_id' not in session: return '', 401
     conn = get_db_connection()
-    if not conn: return '', 500
     cursor = conn.cursor(dictionary=True)
-
-    # 1. Verifica permissão
-    cursor.execute("""
-        SELECT f.user_id
-        FROM questions q
-        JOIN forms f ON q.form_id = f.id
-        WHERE q.id = %s
-    """, (question_id,))
-    question_info = cursor.fetchone()
-    
-    if not question_info or question_info['user_id'] != session['user_id']:
-        conn.close()
-        return 'Não autorizado', 403
-    
-    try:
-        # A remoção em cascata cuidará das respostas e opções
-        cursor.execute("DELETE FROM questions WHERE id = %s", (question_id,))
+    cursor.execute("SELECT f.user_id FROM questions q JOIN forms f ON q.form_id=f.id WHERE q.id=%s", (question_id,))
+    row = cursor.fetchone()
+    if row and row['user_id'] == session['user_id']:
+        cursor.execute("DELETE FROM questions WHERE id=%s", (question_id,))
         conn.commit()
         conn.close()
-        return '', 200 # Resposta vazia, pois o HTMX remove o elemento
-    except Exception as e:
-        print(f"Erro ao deletar pergunta {question_id}: {e}")
-        conn.close()
-        return 'Erro ao deletar', 500
+        return '', 200
+    conn.close()
+    return '', 403
 
-
-# --- Rotas de Submissão de Formulário (Público, Mantidas do seu amigo, idênticas) ---
+# --- Área Pública (Responder e Ver Minha Resposta) ---
 
 @app.route('/view/<int:form_id>')
 def view_form(form_id):
-    """Página pública para preencher o formulário. Usa a função de busca."""
-    # Chama a função para buscar os dados ATUALIZADOS do banco
     form, questions = fetch_form_with_questions(form_id)
-    
     if not form:
         flash('Formulário não encontrado.', 'danger')
         return redirect(url_for('home'))
-        
     return render_template('view_form.html', form=form, questions=questions)
 
 @app.route('/form/submit/<int:form_id>', methods=['POST'])
 def submit_form(form_id):
-    """Lógica para salvar as respostas."""
     form, questions = fetch_form_with_questions(form_id)
-    if not form:
-        flash('Formulário não encontrado.', 'danger')
-        return redirect(url_for('home'))
-
+    if not form: return redirect(url_for('home'))
+    
     conn = get_db_connection()
-    if not conn:
-        flash('Erro de conexão com o banco de dados.', 'danger')
-        return redirect(url_for('view_form', form_id=form_id))
-        
     cursor = conn.cursor()
     user_id = session.get('user_id')
-
+    
     try:
-        # 1. Cria um registro de resposta (response)
         cursor.execute("INSERT INTO responses (form_id, user_id) VALUES (%s, %s)", (form_id, user_id))
-        response_id = cursor.lastrowid
+        resp_id = cursor.lastrowid
         
-        # 2. Salva as respostas (answers)
         for q in questions:
-            
-            # Resposta para perguntas abertas
+            qid = q['id']
             if q['question_type'] == 'text':
-                answer_text = request.form.get(f"q_{q['id']}_text")
-                if answer_text:
-                    cursor.execute(
-                        "INSERT INTO answers (response_id, question_id, answer_text) VALUES (%s, %s, %s)",
-                        (response_id, q['id'], answer_text)
-                    )
-
-            # Resposta para Múltipla Escolha
+                val = request.form.get(f"q_{qid}_text")
+                if val: cursor.execute("INSERT INTO answers (response_id, question_id, answer_text) VALUES (%s,%s,%s)", (resp_id, qid, val))
+            
             elif q['question_type'] == 'multiple_choice':
-                option_id = request.form.get(f"q_{q['id']}_choice")
-                if option_id:
-                    cursor.execute(
-                        "INSERT INTO answers (response_id, question_id, option_id) VALUES (%s, %s, %s)",
-                        (response_id, q['id'], option_id)
-                    )
-
-            # Resposta para Checkbox (pode haver múltiplas)
+                val = request.form.get(f"q_{qid}_choice")
+                if val: cursor.execute("INSERT INTO answers (response_id, question_id, option_id) VALUES (%s,%s,%s)", (resp_id, qid, val))
+            
             elif q['question_type'] == 'checkbox':
-                options_selected = request.form.getlist(f"q_{q['id']}_checkbox")
-                for selected_id in options_selected:
-                    cursor.execute(
-                        "INSERT INTO answers (response_id, question_id, option_id) VALUES (%s, %s, %s)",
-                        (response_id, q['id'], selected_id)
-                    )
-
+                vals = request.form.getlist(f"q_{qid}_checkbox")
+                for v in vals:
+                    cursor.execute("INSERT INTO answers (response_id, question_id, option_id) VALUES (%s,%s,%s)", (resp_id, qid, v))
+        
         conn.commit()
-        flash('Sua resposta foi enviada com sucesso! Agradecemos sua participação.', 'success')
-        return render_template('form_submitted.html', form=form) # Uma tela de agradecimento
-    except Error as e:
+        return render_template('form_submitted.html', form=form)
+    except Exception as e:
         conn.rollback()
-        flash(f'Ocorreu um erro ao enviar sua resposta: {e}', 'danger')
+        flash(f'Erro ao enviar: {e}', 'danger')
         return redirect(url_for('view_form', form_id=form_id))
     finally:
         conn.close()
 
-# --- Rotas de Análise e Resultados (SUAS ROTAS) ---
+# Rota para ver minha resposta
+@app.route('/form/<int:form_id>/my-response')
+def view_my_response(form_id):
+    if 'user_id' not in session: return redirect(url_for('login'))
+    
+    form, questions = fetch_form_with_questions(form_id)
+    if not form: return redirect(url_for('dashboard'))
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    # Busca respostas do usuário
+    cursor.execute("""
+        SELECT a.question_id, a.answer_text, a.option_id
+        FROM answers a
+        JOIN responses r ON a.response_id = r.id
+        WHERE r.form_id = %s AND r.user_id = %s
+    """, (form_id, session['user_id']))
+    raw_answers = cursor.fetchall()
+    conn.close()
+
+    user_answers = {}
+    for ans in raw_answers:
+        qid = ans['question_id']
+        if qid not in user_answers: user_answers[qid] = {'text': None, 'options': []}
+        if ans['answer_text']: user_answers[qid]['text'] = ans['answer_text']
+        if ans['option_id']: user_answers[qid]['options'].append(ans['option_id'])
+
+    return render_template('view_my_response.html', form=form, questions=questions, user_answers=user_answers)
+
+# --- Resultados e Análise IA ---
 
 @app.route('/form/<int:form_id>/results')
 def form_results(form_id):
-    """
-    Rota que renderiza a página de resultados.
-    A busca dos dados de análise é feita via AJAX/JavaScript na rota /api/form/<form_id>/analysis.
-    """
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-
-    # Verifica se o usuário é o dono do formulário
-    # Apenas pegamos o 'form' em si, não as 'questions', pois o JS vai buscar tudo
+    if 'user_id' not in session: return redirect(url_for('login'))
+    # Apenas renderiza, o JS chama a API abaixo
     form, _ = fetch_form_with_questions(form_id, session['user_id'])
-    if not form:
-        flash('Formulário não encontrado ou você não tem permissão.', 'danger')
-        return redirect(url_for('dashboard'))
-
-    return render_template('form_results.html', form=form) # Passamos apenas o 'form'
+    if not form: return redirect(url_for('dashboard'))
+    return render_template('form_results.html', form=form)
 
 @app.route('/api/form/<int:form_id>/analysis', methods=['GET'])
 def get_form_analysis_data(form_id):
-    if 'user_id' not in session:
-        return jsonify({"error": "Não autenticado"}), 401
-
+    if 'user_id' not in session: return jsonify({"error": "401"}), 401
+    
     conn = get_db_connection()
-    if not conn:
-        return jsonify({"error": "Erro de conexão com o banco de dados"}), 500
-        
+    if not conn: return jsonify({"error": "DB Error"}), 500
     cursor = conn.cursor(dictionary=True)
 
-    # 1. Verificar se o formulário existe e pertence ao usuário
-    cursor.execute("SELECT id, title FROM forms WHERE id = %s AND user_id = %s", (form_id, session['user_id']))
+    # Verifica permissão
+    cursor.execute("SELECT id, title FROM forms WHERE id=%s AND user_id=%s", (form_id, session['user_id']))
     form = cursor.fetchone()
     if not form:
         conn.close()
-        return jsonify({"error": "Formulário não encontrado ou sem permissão"}), 404
+        return jsonify({"error": "404"}), 404
 
-    # 2. Descobrir quantas respostas existem AGORA
-    cursor.execute("SELECT COUNT(id) AS total FROM responses WHERE form_id = %s", (form_id,))
-    current_total_responses = cursor.fetchone()['total']
+    # Conta respostas atuais
+    cursor.execute("SELECT COUNT(id) AS total FROM responses WHERE form_id=%s", (form_id,))
+    total_resp = cursor.fetchone()['total']
 
-    # --- LÓGICA DE CACHE (Verifica se já existe análise pronta) ---
-    cursor.execute("SELECT response_count, analysis_data FROM analysis_cache WHERE form_id = %s", (form_id,))
-    cached_result = cursor.fetchone()
-
-    # Se achou cache E o número de respostas é igual ao atual...
-    if cached_result and cached_result['response_count'] == current_total_responses:
-        print(f"⚡ CACHE ACERTOU: Usando dados salvos para o form {form_id}")
+    # Checa Cache
+    cursor.execute("SELECT response_count, analysis_data FROM analysis_cache WHERE form_id=%s", (form_id,))
+    cached = cursor.fetchone()
+    
+    if cached and cached['response_count'] == total_resp:
         conn.close()
-        
-        data = cached_result['analysis_data']
-        # Se o banco devolveu como string, converte para JSON
-        if isinstance(data, str):
-            data = json.loads(data)
-            
+        data = cached['analysis_data']
+        if isinstance(data, str): data = json.loads(data)
         return jsonify(data)
 
-    print(f"🐢 CACHE MISS: Gerando nova análise com IA para o form {form_id}...")
-    
-    # --- SE NÃO TEM CACHE, GERA A ANÁLISE (Lento) ---
-
-    # Reutilizamos sua função helper para pegar as perguntas
+    # GERA NOVA ANÁLISE
     _, questions = fetch_form_with_questions(form_id, session['user_id'])
-    
-    analysis_results = {
+    results = {
         "form_id": form['id'],
         "form_title": form['title'],
-        "total_responses": current_total_responses,
+        "total_responses": total_resp,
         "questions_analysis": []
     }
 
     for q in questions:
-        q_analysis = {
-            "question_id": q['id'],
-            "question_title": q['question_text'],
-            "question_type": q['question_type'],
-            "analysis_data": {}
-        }
+        q_an = {"question_id": q['id'], "question_title": q['question_text'], "question_type": q['question_type'], "analysis_data": {}}
         
-        # Cenário 1: Perguntas de Texto (Chama a IA)
         if q['question_type'] == 'text':
-            cursor.execute("""
-                SELECT answer_text FROM answers
-                WHERE question_id = %s AND answer_text IS NOT NULL AND answer_text != ''
-                ORDER BY id DESC
-            """, (q['id'],))
+            cursor.execute("SELECT answer_text FROM answers WHERE question_id=%s AND answer_text IS NOT NULL", (q['id'],))
+            texts = [row['answer_text'] for row in cursor.fetchall() if row['answer_text'].strip()]
             
-            raw_texts = [row['answer_text'] for row in cursor.fetchall() if row['answer_text'].strip()]
+            # Chama IA
+            ai_data = call_fastapi_full_analysis(texts) if texts else {"sentiment": {"positive":0,"neutral":0,"negative":0}, "summary": {"summary_text": "Sem dados"}}
+            q_an['analysis_data'] = {"summary_text": ai_data['summary']['summary_text'], "sentiment": ai_data['sentiment'], "raw_responses": texts}
 
-            # CHAMA AS APIS FASTAPI
-            if raw_texts:
-                full_analysis = call_fastapi_full_analysis(raw_texts)
-                sentiment_data = full_analysis['sentiment']
-                summary_text = full_analysis['summary']['summary_text']
-            else:
-                sentiment_data = {"positive": 0, "neutral": 0, "negative": 0}
-                summary_text = "Sem respostas suficientes para análise."
-
-            q_analysis['analysis_data'] = {
-                "summary_text": summary_text,
-                "sentiment": sentiment_data,
-                "raw_responses": raw_texts 
-            }
-
-        # Cenário 2: Múltipla Escolha (Gráfico)
         elif q['question_type'] in ['multiple_choice', 'checkbox']:
             cursor.execute("""
-                SELECT qo.option_text, COUNT(a.id) as vote_count
-                FROM question_options qo
-                LEFT JOIN answers a ON qo.id = a.option_id
-                WHERE qo.question_id = %s
-                GROUP BY qo.option_text
-                ORDER BY vote_count DESC
+                SELECT qo.option_text, COUNT(a.id) as cnt 
+                FROM question_options qo 
+                LEFT JOIN answers a ON qo.id=a.option_id 
+                WHERE qo.question_id=%s GROUP BY qo.option_text ORDER BY cnt DESC
             """, (q['id'],))
-            option_stats = cursor.fetchall()
-
-            labels = [s['option_text'] for s in option_stats]
-            total_votes = sum(s['vote_count'] for s in option_stats)
-            data = [round((s['vote_count'] / total_votes) * 100, 1) if total_votes > 0 else 0 for s in option_stats]
-
-            q_analysis['analysis_data'] = {
+            stats = cursor.fetchall()
+            total_votes = sum(s['cnt'] for s in stats)
+            q_an['analysis_data'] = {
                 "chart_data": {
-                    "labels": labels,
-                    "data": data,
-                    "unit": "%"
+                    "labels": [s['option_text'] for s in stats],
+                    "data": [round((s['cnt']/total_votes)*100, 1) if total_votes else 0 for s in stats]
                 }
             }
-        
-        analysis_results['questions_analysis'].append(q_analysis)
+        results['questions_analysis'].append(q_an)
 
-    # --- SALVAR O NOVO RESULTADO NO CACHE ---
+    # Salva Cache
     try:
-        json_data = json.dumps(analysis_results)
-        
+        json_data = json.dumps(results)
         cursor.execute("""
-            INSERT INTO analysis_cache (form_id, response_count, analysis_data)
-            VALUES (%s, %s, %s)
-            ON DUPLICATE KEY UPDATE 
-                response_count = VALUES(response_count),
-                analysis_data = VALUES(analysis_data)
-        """, (form_id, current_total_responses, json_data))
-        
+            INSERT INTO analysis_cache (form_id, response_count, analysis_data) VALUES (%s, %s, %s)
+            ON DUPLICATE KEY UPDATE response_count=VALUES(response_count), analysis_data=VALUES(analysis_data)
+        """, (form_id, total_resp, json_data))
         conn.commit()
-        print("💾 Dados salvos no cache.")
-        
     except Exception as e:
-        print(f"Erro ao salvar cache: {e}")
-    
+        print(f"Erro cache: {e}")
+
     conn.close()
-    return jsonify(analysis_results)
+    return jsonify(results)
 
 if __name__ == '__main__':
-   app.run(debug=True)
+    app.run(debug=True)
