@@ -1,12 +1,20 @@
-# TCC_ACERTUS
-Repositório com a finalidade de registrar e apresentar nosso trabalho desenvolvido durante o andamento do projeto.
+# ACERTUS | AI-Powered Operational Intelligence Platform
+This repository contains the graduation project (TCC) for the Systems Analysis and Development (ADS) degree at SENAI. 
 
-1ª passo - Definimos o nome da equipe (acertus).
-2ª passo - Processo de criação da logo da nossa equipe/marca.
-3ª passo - Logo criado e selo.
-4ª passo - Início da programação front-end.
-5ª passo - Começo da estilização do site.
+The project is a robust **Internal Intelligence System** designed to bridge the gap between executive leadership (C-Level) and frontline employees. It transforms raw feedback into strategic insights using **Artificial Intelligence**.
 
+### 🚀 Business Value:
+* **Frontline-to-Executive Connection:** Enables presidents and directors to have direct, data-driven visibility into the "shop floor" (chao de fábrica) experience.
+* **Strategic Decision Making:** Replaces simple forms with a complex data engine that identifies operational bottlenecks and employee insights.
+* **AI-Driven Analysis:** Uses AI to process large volumes of internal feedback, categorizing sentiments and urgent issues automatically.
 
-Inteligência Artificial:
-1ª passo - Acessamos sites como: Amazon, Mercado Livre, Americanas e etc. Com a finalidade de coletar feedbacks.
+### 🧠 My Key Contributions:
+* **Database Architecture & Integrity:** Designed a scalable SQL structure to store and relate complex organizational data.
+* **Mathematical Logic:** Applied advanced logic to create scoring systems and KPIs based on employee input.
+* **Backend Intelligence:** Developed the Python logic to integrate AI models for automated data lifting and report generation.
+
+### 🛠️ Tech Stack:
+* **Backend:** Python & Jupyter Notebook (Data Processing).
+* **AI:** Natural Language Processing (NLP) for feedback analysis.
+* **Frontend:** Modern, accessible web interface for high adoption rates.
+* **Database:** Structured SQL Architecture.
