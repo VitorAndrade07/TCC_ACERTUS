@@ -4,7 +4,7 @@ This repository contains the graduation project (TCC) for the Systems Analysis a
 The project is a robust **Internal Intelligence System** designed to bridge the gap between executive leadership (C-Level) and frontline employees. It transforms raw feedback into strategic insights using **Artificial Intelligence**.
 
 ### 🚀 Business Value:
-* **Frontline-to-Executive Connection:** Enables presidents and directors to have direct, data-driven visibility into the "shop floor" (chao de fábrica) experience.
+* **Frontline-to-Executive Connection:** Enables presidents and directors to have direct, data-driven visibility into the frontline worker experience and operational reality.
 * **Strategic Decision Making:** Replaces simple forms with a complex data engine that identifies operational bottlenecks and employee insights.
 * **AI-Driven Analysis:** Uses AI to process large volumes of internal feedback, categorizing sentiments and urgent issues automatically.
 
